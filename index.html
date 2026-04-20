@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>RGB ARBITRAGE</title>
+    <script src="https://telegram.org"></script>
+    <script src="https://tailwindcss.com"></script>
+    <style>
+        body { background: #000; color: #fff; font-family: sans-serif; overflow: hidden; }
+        .neon-btn { box-shadow: 0 0 15px rgba(59, 130, 246, 0.5); }
+    </style>
+</head>
+<body class="p-5 flex flex-col min-h-screen">
+    <div class="flex justify-between items-center mb-10">
+        <h1 class="text-2xl font-black text-blue-500 italic">RGB ELITE</h1>
+        <span id="user-id" class="text-xs text-gray-500 font-mono"></span>
+    </div>
+
+    <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 text-center mb-6">
+        <p class="text-zinc-500 text-sm uppercase mb-2">Мій Баланс</p>
+        <h2 class="text-5xl font-black mb-4">$<span id="balance">0.00</span></h2>
+        <div class="inline-block bg-blue-600/10 text-blue-400 text-[10px] px-3 py-1 rounded-full border border-blue-500/20">
+            СТАВКА: $0.3 ЗА ЛІДА
+        </div>
+    </div>
+
+    <div class="space-y-4 flex-grow">
+        <button onclick="Telegram.WebApp.close()" class="w-full bg-blue-600 neon-btn py-4 rounded-2xl font-bold text-lg">🔗 СТВОРИТИ ЛІНК</button>
+        <button class="w-full bg-zinc-900 border border-zinc-800 py-4 rounded-2xl font-bold">💳 ВИПЛАТА</button>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand(); // Розгорнути на весь екран
+        document.getElementById('user-id').innerText = "ID: " + tg.initDataUnsafe.user.id;
+        // Тут потім додамо запит до твоєї бази, щоб підтягнути реальний баланс
+    </script>
+</body>
+</html>
