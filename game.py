@@ -1,184 +1,151 @@
-"""Игровая логика RGB ELITE: Neon Core.
+"""GIFT LAB — логика игры: кейсы, апгрейд подарков, продажа, награды.
 
-Сервер — источник истины: клиент только присылает, сколько раз тапнул,
-а начисления, энергия и покупки считаются здесь. Такая же логика
-продублирована в index.html для офлайн-режима (без сервера).
+Сервер — источник истины: все случайные числа выпадают здесь,
+клиент только показывает анимацию уже известного результата.
+Такая же логика продублирована в index.html для офлайн-демо.
 """
 from __future__ import annotations
 
-import time
+import random
 from datetime import date, timedelta
 
-# ---------------------------------------------------------------- баланс игры
-BASE_ENERGY = 500          # стартовый запас энергии
-ENERGY_PER_LEVEL = 250     # +энергии за уровень «Батарея»
-ENERGY_REGEN = 2.0         # восстановление энергии в секунду
-MAX_TAPS_PER_SEC = 20      # защита от автокликеров
-MAX_COMBO = 3              # максимальный множитель комбо
-OFFLINE_CAP_SEC = 3 * 3600 # пассивный доход копится максимум 3 часа
-TURBO_MULT = 2             # множитель «Турбо»
-REF_BONUS_INVITER = 1000
-REF_BONUS_INVITEE = 500
+rng = random.SystemRandom()  # криптостойкий генератор — результат не предсказать
 
-UPGRADES = {
-    "tap":  {"title": "Сила тапа",  "desc": "+1 кристалл за тап",       "base": 50,  "growth": 1.6, "max": 30},
-    "cap":  {"title": "Батарея",    "desc": f"+{ENERGY_PER_LEVEL} к энергии", "base": 100, "growth": 1.7, "max": 20},
-    "auto": {"title": "Авто-майнер", "desc": "+0.5 кристалла в секунду", "base": 200, "growth": 1.8, "max": 40},
+# ---------------------------------------------------------------- редкости
+TIERS = {
+    "common":    {"title": "Обычный",     "color": "#9ca3af"},
+    "uncommon":  {"title": "Необычный",   "color": "#22c55e"},
+    "rare":      {"title": "Редкий",      "color": "#3b82f6"},
+    "epic":      {"title": "Эпический",   "color": "#a855f7"},
+    "legendary": {"title": "Легендарный", "color": "#f59e0b"},
 }
 
-LEAGUES = [  # (порог total_earned, название)
-    (0, "Бронза"), (5_000, "Серебро"), (25_000, "Золото"),
-    (100_000, "Платина"), (500_000, "Алмаз"), (2_000_000, "RGB Элита"),
-]
+# ---------------------------------------------------------------- подарки
+# id: (название, эмодзи, редкость, базовая цена в кристаллах)
+GIFTS = {
+    "bear":    ("Мишка",          "🧸", "common",    10),
+    "rose":    ("Роза",           "🌹", "common",    15),
+    "candy":   ("Леденец",        "🍭", "common",    20),
+    "balloon": ("Шарик",          "🎈", "common",    25),
+    "clover":  ("Клевер",         "🍀", "common",    30),
+    "bouquet": ("Букет",          "💐", "uncommon",  60),
+    "cake":    ("Торт",           "🎂", "uncommon",  80),
+    "potion":  ("Зелье",          "🧪", "uncommon", 100),
+    "box":     ("Сюрприз",        "🎁", "uncommon", 120),
+    "ring":    ("Кольцо",         "💍", "rare",     250),
+    "orb":     ("Шар судьбы",     "🔮", "rare",     350),
+    "guitar":  ("Гитара",         "🎸", "rare",     450),
+    "crown":   ("Корона",         "👑", "epic",    1000),
+    "unicorn": ("Единорог",       "🦄", "epic",    1600),
+    "dragon":  ("Дракон",         "🐉", "epic",    2500),
+    "rocket":  ("Ракета",         "🚀", "legendary", 6000),
+    "galaxy":  ("Галактика",      "🌌", "legendary", 12000),
+    "trophy":  ("Кубок чемпиона", "🏆", "legendary", 25000),
+}
 
-DAILY_REWARDS = [500, 1000, 2000, 3500, 5000, 7500, 12000]  # дни 1..7 подряд
+# фон подарка: (название, множитель цены, шанс в %)
+BACKGROUNDS = {
+    "plain":   ("Обычный", 1.0, 75),
+    "neon":    ("Неон",    1.3, 18),
+    "gold":    ("Золото",  2.0, 6),
+    "rainbow": ("Радуга",  5.0, 1),
+}
 
-SHOP = {  # покупки за Telegram Stars (XTR)
-    "turbo":  {"title": "Турбо x2 на 1 час", "desc": "Все тапы и пассивный доход x2 целый час", "stars": 25},
-    "refill": {"title": "Полная энергия",     "desc": "Мгновенно восстанавливает всю энергию",  "stars": 10},
-    "pack":   {"title": "Мешок кристаллов",   "desc": "+50 000 кристаллов сразу",               "stars": 50},
+# кейсы: цена (0 = бесплатный по таймеру) и шансы редкостей в %
+CASES = {
+    "free":    {"title": "Бесплатный", "price": 0,    "odds": {"common": 80, "uncommon": 17, "rare": 3}},
+    "basic":   {"title": "Базовый",    "price": 150,  "odds": {"common": 60, "uncommon": 30, "rare": 8.5,
+                                                               "epic": 1.4, "legendary": 0.1}},
+    "premium": {"title": "Премиум",    "price": 1200, "odds": {"uncommon": 40, "rare": 40, "epic": 17,
+                                                               "legendary": 3}},
+}
+FREE_CASE_COOLDOWN = 4 * 3600
+
+# апгрейд
+UPGRADE_EDGE = 0.08        # 8% «налог» игры — иначе кристаллы бесконечно множатся
+UPGRADE_MAX_CHANCE = 0.75
+UPGRADE_MIN_CHANCE = 0.01
+UPGRADE_MAX_ITEMS = 6
+
+START_COINS = 300
+DAILY_REWARDS = [100, 150, 250, 400, 600, 900, 1500]
+REF_BONUS_INVITER = 500
+REF_BONUS_INVITEE = 250
+
+# покупка кристаллов за Telegram Stars (вывода денег нет — это не казино)
+SHOP = {
+    "pack_s": {"title": "1 000 кристаллов",  "coins": 1_000,  "stars": 15},
+    "pack_m": {"title": "4 000 кристаллов",  "coins": 4_000,  "stars": 50},
+    "pack_l": {"title": "15 000 кристаллов", "coins": 15_000, "stars": 150},
 }
 
 
-def upgrade_cost(key: str, level: int) -> int:
-    u = UPGRADES[key]
-    return int(u["base"] * u["growth"] ** level)
+# ---------------------------------------------------------------- помощники
+def item_value(gift: str, bg: str) -> int:
+    return int(round(GIFTS[gift][3] * BACKGROUNDS[bg][1]))
 
 
-def max_energy(s: dict) -> int:
-    return BASE_ENERGY + ENERGY_PER_LEVEL * s["cap_lvl"]
+def roll_background() -> str:
+    keys = list(BACKGROUNDS)
+    return rng.choices(keys, weights=[BACKGROUNDS[k][2] for k in keys])[0]
 
 
-def tap_power(s: dict) -> int:
-    return 1 + s["tap_lvl"]
+def roll_case(case: str) -> tuple[str, str]:
+    """Возвращает (gift_id, background_id)."""
+    odds = CASES[case]["odds"]
+    tier = rng.choices(list(odds), weights=list(odds.values()))[0]
+    gift = rng.choice([g for g, v in GIFTS.items() if v[2] == tier])
+    return gift, roll_background()
 
 
-def auto_rate(s: dict) -> float:
-    return 0.5 * s["auto_lvl"]
+def case_expected_value(case: str) -> float:
+    """Средняя ценность выпадения (для проверки баланса)."""
+    odds = CASES[case]["odds"]
+    bg_mult = sum(b[1] * b[2] for b in BACKGROUNDS.values()) / 100
+    total = 0.0
+    for tier, pct in odds.items():
+        vals = [v[3] for v in GIFTS.values() if v[2] == tier]
+        total += pct / 100 * sum(vals) / len(vals)
+    return total * bg_mult
 
 
-def league(total: float) -> str:
-    name = LEAGUES[0][1]
-    for threshold, title in LEAGUES:
-        if total >= threshold:
-            name = title
-    return name
-
-
-def new_state(now: float | None = None) -> dict:
-    now = now or time.time()
-    return {
-        "coins": 0.0, "total": 0.0,
-        "energy": float(BASE_ENERGY), "ts": now,
-        "tap_lvl": 0, "cap_lvl": 0, "auto_lvl": 0,
-        "turbo_until": 0.0, "streak": 0, "last_daily": "",
-    }
-
-
-def _earn(s: dict, amount: float) -> None:
-    s["coins"] += amount
-    s["total"] += amount
-
-
-def tick(s: dict, now: float | None = None) -> float:
-    """Начисляет восстановление энергии и пассивный доход с момента s['ts'].
-    Возвращает, сколько кристаллов принёс авто-майнер."""
-    now = now or time.time()
-    dt = max(0.0, now - s["ts"])
-    s["energy"] = min(max_energy(s), s["energy"] + dt * ENERGY_REGEN)
-    passive_dt = min(dt, OFFLINE_CAP_SEC)
-    mult = TURBO_MULT if s["turbo_until"] > now else 1
-    gained = auto_rate(s) * passive_dt * mult
-    _earn(s, gained)
-    s["ts"] = now
-    return gained
-
-
-def apply_taps(s: dict, taps: int, combo_taps: dict[int, int] | None, elapsed: float,
-               now: float | None = None) -> float:
-    """taps — всего тапов; combo_taps — {множитель: сколько тапов с ним}.
-    Всё, что не влезает в лимиты, отбрасывается."""
-    now = now or time.time()
-    tick(s, now)
-    taps = max(0, int(taps))
-    taps = min(taps, int(s["energy"]), int(max(elapsed, 1) * MAX_TAPS_PER_SEC))
-    if taps == 0:
+def upgrade_chance(input_value: int, target_value: int) -> float:
+    if target_value <= input_value or input_value <= 0:
         return 0.0
-    # раскладываем тапы по множителям, но не больше чем taps суммарно
-    remaining = taps
-    weighted = 0
-    for mult, n in sorted((combo_taps or {}).items(), reverse=True):
-        mult = max(1, min(MAX_COMBO, int(mult)))
-        n = max(0, min(int(n), remaining))
-        weighted += mult * n
-        remaining -= n
-    weighted += remaining  # оставшиеся тапы — без комбо
-    turbo = TURBO_MULT if s["turbo_until"] > now else 1
-    gained = weighted * tap_power(s) * turbo
-    s["energy"] -= taps
-    _earn(s, gained)
-    return gained
+    chance = input_value / target_value * (1 - UPGRADE_EDGE)
+    if chance < UPGRADE_MIN_CHANCE:
+        return 0.0  # слишком большой разрыв — запрещаем, а не округляем шанс вверх
+    return min(UPGRADE_MAX_CHANCE, chance)
 
 
-def buy_upgrade(s: dict, key: str, now: float | None = None) -> str | None:
-    """Возвращает текст ошибки или None при успехе."""
-    if key not in UPGRADES:
-        return "Нет такого улучшения"
-    tick(s, now)
-    lvl_key = f"{key}_lvl"
-    if s[lvl_key] >= UPGRADES[key]["max"]:
-        return "Максимальный уровень"
-    cost = upgrade_cost(key, s[lvl_key])
-    if s["coins"] < cost:
-        return "Не хватает кристаллов"
-    s["coins"] -= cost
-    s[lvl_key] += 1
-    return None
+def do_upgrade(input_value: int, target: str) -> dict:
+    """Крутит колесо. roll — куда остановилась стрелка (0..1), выигрыш если roll < chance."""
+    if target not in GIFTS:
+        return {"error": "Нет такого подарка"}
+    chance = upgrade_chance(input_value, item_value(target, "plain"))
+    if chance == 0:
+        return {"error": "Цель должна быть дороже, но шанс — не меньше 1%"}
+    roll = rng.random()
+    return {"win": roll < chance, "roll": roll, "chance": chance}
 
 
-def claim_daily(s: dict, today: date | None = None) -> int:
-    """Возвращает награду (0, если сегодня уже забирали)."""
+def claim_daily(streak: int, last_daily: str, today: date | None = None) -> tuple[int, int, str]:
+    """Возвращает (награда, новая серия, новая дата). Награда 0 — уже забирали."""
     today = today or date.today()
-    if s["last_daily"] == today.isoformat():
-        return 0
+    if last_daily == today.isoformat():
+        return 0, streak, last_daily
     yesterday = (today - timedelta(days=1)).isoformat()
-    s["streak"] = s["streak"] + 1 if s["last_daily"] == yesterday else 1
-    s["last_daily"] = today.isoformat()
-    reward = DAILY_REWARDS[min(s["streak"], len(DAILY_REWARDS)) - 1]
-    _earn(s, reward)
-    return reward
-
-
-def apply_shop_item(s: dict, item: str, now: float | None = None) -> None:
-    now = now or time.time()
-    tick(s, now)
-    if item == "turbo":
-        s["turbo_until"] = max(s["turbo_until"], now) + 3600
-    elif item == "refill":
-        s["energy"] = float(max_energy(s))
-    elif item == "pack":
-        _earn(s, 50_000)
-
-
-def public_view(s: dict, now: float | None = None) -> dict:
-    """То, что отдаём клиенту."""
-    now = now or time.time()
-    return {
-        "coins": int(s["coins"]), "total": int(s["total"]),
-        "energy": int(s["energy"]), "max_energy": max_energy(s),
-        "tap_power": tap_power(s), "auto_rate": auto_rate(s),
-        "levels": {k: s[f"{k}_lvl"] for k in UPGRADES},
-        "costs": {k: upgrade_cost(k, s[f"{k}_lvl"]) for k in UPGRADES},
-        "turbo_left": max(0, int(s["turbo_until"] - now)),
-        "streak": s["streak"],
-        "daily_ready": s["last_daily"] != date.today().isoformat(),
-        "league": league(s["total"]),
-    }
+    streak = streak + 1 if last_daily == yesterday else 1
+    return DAILY_REWARDS[min(streak, len(DAILY_REWARDS)) - 1], streak, today.isoformat()
 
 
 def config() -> dict:
     return {
-        "upgrades": UPGRADES, "leagues": LEAGUES, "daily": DAILY_REWARDS,
-        "shop": SHOP, "regen": ENERGY_REGEN, "max_combo": MAX_COMBO,
-        "ref_inviter": REF_BONUS_INVITER, "ref_invitee": REF_BONUS_INVITEE,
+        "tiers": TIERS,
+        "gifts": {k: {"name": v[0], "emoji": v[1], "tier": v[2], "value": v[3]} for k, v in GIFTS.items()},
+        "backgrounds": {k: {"name": v[0], "mult": v[1], "pct": v[2]} for k, v in BACKGROUNDS.items()},
+        "cases": CASES, "free_cooldown": FREE_CASE_COOLDOWN,
+        "edge": UPGRADE_EDGE, "max_chance": UPGRADE_MAX_CHANCE, "min_chance": UPGRADE_MIN_CHANCE,
+        "max_items": UPGRADE_MAX_ITEMS, "daily": DAILY_REWARDS, "start_coins": START_COINS,
+        "ref_inviter": REF_BONUS_INVITER, "ref_invitee": REF_BONUS_INVITEE, "shop": SHOP,
     }

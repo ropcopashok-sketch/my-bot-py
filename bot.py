@@ -1,4 +1,4 @@
-"""RGB ELITE: Neon Core — Telegram-бот + сервер для Mini App.
+"""GIFT LAB — Telegram-бот + сервер для Mini App.
 
 Один процесс делает всё:
   * отвечает в Telegram (/start, рефералы, оплата Telegram Stars);
@@ -16,6 +16,7 @@ import logging
 import os
 import sqlite3
 import time
+from datetime import date
 from pathlib import Path
 from urllib.parse import parse_qsl
 
@@ -39,10 +40,10 @@ BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 WEBAPP_URL = os.getenv("WEBAPP_URL", "")          # https-адрес, где открыт index.html
 HOST = os.getenv("HOST", "0.0.0.0")
 PORT = int(os.getenv("PORT", "8080"))
-DB_PATH = os.getenv("DB_PATH", str(BASE_DIR / "game.db"))
+DB_PATH = os.getenv("DB_PATH", str(BASE_DIR / "giftlab.db"))
 DEV_MODE = os.getenv("DEV_MODE") == "1"           # разрешает открыть игру в браузере без Telegram
 
-log = logging.getLogger("rgb-elite")
+log = logging.getLogger("gift-lab")
 
 
 # ------------------------------------------------------------------ база данных
@@ -50,79 +51,123 @@ class DB:
     def __init__(self, path: str):
         self.conn = sqlite3.connect(path, check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
-        self.conn.execute("""
+        self.conn.executescript("""
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY,
                 name TEXT NOT NULL DEFAULT '',
-                state TEXT NOT NULL,
-                total REAL NOT NULL DEFAULT 0,
-                referrer INTEGER,
+                coins INTEGER NOT NULL DEFAULT 0,
                 refs INTEGER NOT NULL DEFAULT 0,
-                last_sync REAL NOT NULL DEFAULT 0,
+                referrer INTEGER,
+                last_free REAL NOT NULL DEFAULT 0,
+                streak INTEGER NOT NULL DEFAULT 0,
+                last_daily TEXT NOT NULL DEFAULT '',
                 created REAL NOT NULL
-            )""")
-        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_total ON users(total DESC)")
-        self.conn.execute("""
+            );
+            CREATE TABLE IF NOT EXISTS items (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                owner INTEGER NOT NULL,
+                gift TEXT NOT NULL,
+                bg TEXT NOT NULL,
+                serial INTEGER NOT NULL,
+                value INTEGER NOT NULL,
+                created REAL NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_items_owner ON items(owner);
+            CREATE TABLE IF NOT EXISTS minted (gift TEXT PRIMARY KEY, n INTEGER NOT NULL);
+            CREATE TABLE IF NOT EXISTS feed (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, ts REAL, name TEXT, kind TEXT, data TEXT
+            );
             CREATE TABLE IF NOT EXISTS payments (
                 charge_id TEXT PRIMARY KEY, user_id INTEGER, item TEXT, stars INTEGER, ts REAL
-            )""")
+            );
+        """)
         self.conn.commit()
         self.lock = asyncio.Lock()
 
-    def get(self, uid: int) -> sqlite3.Row | None:
+    # пользователи
+    def user(self, uid: int) -> sqlite3.Row | None:
         return self.conn.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
 
-    def create(self, uid: int, name: str) -> sqlite3.Row:
-        now = time.time()
-        self.conn.execute(
-            "INSERT OR IGNORE INTO users(id, name, state, last_sync, created) VALUES (?,?,?,?,?)",
-            (uid, name, json.dumps(game.new_state(now)), now, now))
-        self.conn.commit()
-        return self.get(uid)
-
-    def save(self, uid: int, state: dict, **extra) -> None:
-        cols = {"state": json.dumps(state), "total": state["total"], **extra}
+    def update_user(self, uid: int, **cols) -> None:
         sets = ", ".join(f"{k}=?" for k in cols)
         self.conn.execute(f"UPDATE users SET {sets} WHERE id=?", (*cols.values(), uid))
-        self.conn.commit()
+
+    def add_coins(self, uid: int, amount: int) -> None:
+        self.conn.execute("UPDATE users SET coins = coins + ? WHERE id=?", (amount, uid))
+
+    # предметы
+    def mint(self, owner: int, gift: str, bg: str) -> dict:
+        """Создаёт новый экземпляр подарка с порядковым номером."""
+        self.conn.execute("INSERT INTO minted(gift, n) VALUES (?, 1) "
+                          "ON CONFLICT(gift) DO UPDATE SET n = n + 1", (gift,))
+        serial = self.conn.execute("SELECT n FROM minted WHERE gift=?", (gift,)).fetchone()[0]
+        value = game.item_value(gift, bg)
+        cur = self.conn.execute(
+            "INSERT INTO items(owner, gift, bg, serial, value, created) VALUES (?,?,?,?,?,?)",
+            (owner, gift, bg, serial, value, time.time()))
+        return {"id": cur.lastrowid, "gift": gift, "bg": bg, "serial": serial, "value": value}
+
+    def items(self, owner: int) -> list[dict]:
+        rows = self.conn.execute("SELECT id, gift, bg, serial, value FROM items WHERE owner=? "
+                                 "ORDER BY value DESC, id DESC", (owner,)).fetchall()
+        return [dict(r) for r in rows]
+
+    def take_items(self, owner: int, ids: list[int]) -> list[sqlite3.Row] | None:
+        """Возвращает предметы, только если ВСЕ принадлежат игроку."""
+        ids = list(dict.fromkeys(int(i) for i in ids))
+        if not ids:
+            return None
+        q = ",".join("?" * len(ids))
+        rows = self.conn.execute(f"SELECT * FROM items WHERE owner=? AND id IN ({q})", (owner, *ids)).fetchall()
+        return rows if len(rows) == len(ids) else None
+
+    def delete_items(self, ids: list[int]) -> None:
+        q = ",".join("?" * len(ids))
+        self.conn.execute(f"DELETE FROM items WHERE id IN ({q})", ids)
+
+    # лента и рейтинг
+    def add_feed(self, name: str, kind: str, data: dict) -> None:
+        self.conn.execute("INSERT INTO feed(ts, name, kind, data) VALUES (?,?,?,?)",
+                          (time.time(), name, kind, json.dumps(data)))
+        self.conn.execute("DELETE FROM feed WHERE id < (SELECT MAX(id) - 200 FROM feed)")
+
+    def feed(self, limit: int = 20) -> list[dict]:
+        rows = self.conn.execute("SELECT * FROM feed ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
+        return [{"id": r["id"], "name": r["name"], "kind": r["kind"], **json.loads(r["data"])} for r in rows]
 
     def top(self, limit: int = 50) -> list[sqlite3.Row]:
-        return self.conn.execute(
-            "SELECT id, name, total FROM users ORDER BY total DESC LIMIT ?", (limit,)).fetchall()
-
-    def rank(self, total: float) -> int:
-        return self.conn.execute("SELECT COUNT(*) FROM users WHERE total > ?", (total,)).fetchone()[0] + 1
+        return self.conn.execute("""
+            SELECT u.id, u.name, COALESCE(SUM(i.value), 0) AS worth, COUNT(i.id) AS cnt
+            FROM users u LEFT JOIN items i ON i.owner = u.id
+            GROUP BY u.id ORDER BY worth DESC LIMIT ?""", (limit,)).fetchall()
 
 
 db: DB  # создаётся в main()
 
 
-async def get_or_create(uid: int, name: str, ref_param: str | None = None) -> tuple[sqlite3.Row, bool]:
-    """Возвращает пользователя; при первом входе начисляет реферальные бонусы."""
-    row = db.get(uid)
+def get_or_create(uid: int, name: str, ref_param: str | None = None) -> tuple[sqlite3.Row, bool]:
+    """Возвращает пользователя; при первом входе даёт стартовые кристаллы и реферальные бонусы."""
+    row = db.user(uid)
     if row:
         if name and row["name"] != name:
-            db.conn.execute("UPDATE users SET name=? WHERE id=?", (name, uid))
+            db.update_user(uid, name=name)
             db.conn.commit()
-        return row, False
-    row = db.create(uid, name)
+        return db.user(uid), False
+    db.conn.execute("INSERT INTO users(id, name, coins, created) VALUES (?,?,?,?)",
+                    (uid, name, game.START_COINS, time.time()))
     if ref_param and ref_param.startswith("ref_"):
         try:
             ref_id = int(ref_param[4:])
         except ValueError:
             ref_id = 0
-        inviter = db.get(ref_id) if ref_id and ref_id != uid else None
+        inviter = db.user(ref_id) if ref_id and ref_id != uid else None
         if inviter:
-            st = json.loads(row["state"])
-            st["coins"] += game.REF_BONUS_INVITEE
-            st["total"] += game.REF_BONUS_INVITEE
-            db.save(uid, st, referrer=ref_id)
-            ist = json.loads(inviter["state"])
-            ist["coins"] += game.REF_BONUS_INVITER
-            ist["total"] += game.REF_BONUS_INVITER
-            db.save(ref_id, ist, refs=inviter["refs"] + 1)
-            row = db.get(uid)
-    return row, True
+            db.update_user(uid, referrer=ref_id)
+            db.add_coins(uid, game.REF_BONUS_INVITEE)
+            db.add_coins(ref_id, game.REF_BONUS_INVITER)
+            db.update_user(ref_id, refs=inviter["refs"] + 1)
+    db.conn.commit()
+    return db.user(uid), True
 
 
 # ------------------------------------------------------------------ проверка Telegram initData
@@ -173,83 +218,137 @@ def auth(request: web.Request) -> dict:
 
 async def body(request: web.Request) -> dict:
     try:
-        return await request.json()
+        data = await request.json()
+        return data if isinstance(data, dict) else {}
     except Exception:
         return {}
 
 
-def respond(row: sqlite3.Row, state: dict, **extra) -> web.Response:
-    view = game.public_view(state)
-    view["refs"] = row["refs"]
-    view["rank"] = db.rank(state["total"])
-    return web.json_response({"ok": True, "state": view, **extra})
+def user_view(uid: int) -> dict:
+    u = db.user(uid)
+    today = date.today().isoformat()
+    return {
+        "coins": u["coins"], "refs": u["refs"], "streak": u["streak"],
+        "daily_ready": u["last_daily"] != today,
+        "free_in": max(0, int(u["last_free"] + game.FREE_CASE_COOLDOWN - time.time())),
+        "items": db.items(uid),
+    }
+
+
+def ok(user_id: int, **extra) -> web.Response:
+    return web.json_response({"ok": True, "user": user_view(user_id), **extra})
+
+
+def fail(uid: int, error: str) -> web.Response:
+    return web.json_response({"ok": False, "error": error, "user": user_view(uid)})
 
 
 async def api_state(request: web.Request) -> web.Response:
     data = auth(request)
-    user = data["user"]
     async with db.lock:
-        row, _ = await get_or_create(user["id"], display_name(user), data.get("start_param"))
-        state = json.loads(row["state"])
-        game.tick(state)
-        db.save(row["id"], state, last_sync=time.time())
-        row = db.get(row["id"])
+        row, _ = get_or_create(data["user"]["id"], display_name(data["user"]), data.get("start_param"))
     if "bot_username" not in request.app:
         request.app["bot_username"] = (await request.app["bot"].get_me()).username
-    return respond(row, state, config=game.config(), uid=row["id"],
-                   bot_username=request.app["bot_username"])
+    return ok(row["id"], config=game.config(), uid=row["id"],
+              bot_username=request.app["bot_username"], feed=db.feed())
 
 
-async def api_sync(request: web.Request) -> web.Response:
+async def api_case(request: web.Request) -> web.Response:
+    data, payload = auth(request), await body(request)
+    case = str(payload.get("case"))
+    if case not in game.CASES:
+        raise web.HTTPBadRequest(text="Нет такого кейса")
+    name = display_name(data["user"])
+    async with db.lock:
+        u, _ = get_or_create(data["user"]["id"], name)
+        price = game.CASES[case]["price"]
+        if price == 0:
+            if time.time() - u["last_free"] < game.FREE_CASE_COOLDOWN:
+                return fail(u["id"], "Бесплатный кейс ещё перезаряжается")
+            db.update_user(u["id"], last_free=time.time())
+        elif u["coins"] < price:
+            return fail(u["id"], "Не хватает кристаллов")
+        else:
+            db.add_coins(u["id"], -price)
+        gift, bg = game.roll_case(case)
+        item = db.mint(u["id"], gift, bg)
+        if game.GIFTS[gift][2] in ("epic", "legendary") or bg in ("gold", "rainbow"):
+            db.add_feed(name, "drop", {"gift": gift, "bg": bg, "serial": item["serial"], "case": case})
+        db.conn.commit()
+    return ok(u["id"], item=item)
+
+
+async def api_sell(request: web.Request) -> web.Response:
     data, payload = auth(request), await body(request)
     async with db.lock:
-        row, _ = await get_or_create(data["user"]["id"], display_name(data["user"]))
-        state = json.loads(row["state"])
-        now = time.time()
-        combo = {int(k): int(v) for k, v in (payload.get("combo") or {}).items() if str(k).isdigit()}
-        game.apply_taps(state, payload.get("taps", 0), combo, now - row["last_sync"], now)
-        db.save(row["id"], state, last_sync=now)
-    return respond(row, state)
+        u, _ = get_or_create(data["user"]["id"], display_name(data["user"]))
+        rows = db.take_items(u["id"], payload.get("ids") or [])
+        if not rows:
+            return fail(u["id"], "Выбери свои подарки")
+        total = sum(r["value"] for r in rows)
+        db.delete_items([r["id"] for r in rows])
+        db.add_coins(u["id"], total)
+        db.conn.commit()
+    return ok(u["id"], sold=total)
 
 
-async def api_buy(request: web.Request) -> web.Response:
+async def api_upgrade(request: web.Request) -> web.Response:
     data, payload = auth(request), await body(request)
+    name = display_name(data["user"])
     async with db.lock:
-        row, _ = await get_or_create(data["user"]["id"], display_name(data["user"]))
-        state = json.loads(row["state"])
-        err = game.buy_upgrade(state, str(payload.get("key")))
-        db.save(row["id"], state)
-    return respond(row, state, error=err)
+        u, _ = get_or_create(data["user"]["id"], name)
+        ids = payload.get("ids") or []
+        if len(ids) > game.UPGRADE_MAX_ITEMS:
+            return fail(u["id"], f"Максимум {game.UPGRADE_MAX_ITEMS} подарков за раз")
+        rows = db.take_items(u["id"], ids)
+        if not rows:
+            return fail(u["id"], "Выбери свои подарки")
+        input_value = sum(r["value"] for r in rows)
+        target = str(payload.get("target"))
+        res = game.do_upgrade(input_value, target)
+        if "error" in res:
+            return fail(u["id"], res["error"])
+        db.delete_items([r["id"] for r in rows])
+        item = db.mint(u["id"], target, "plain") if res["win"] else None
+        if res["win"] or input_value >= 500:  # в ленту — победы и крупные проигрыши
+            db.add_feed(name, "upgrade", {
+                "from": [r["gift"] for r in rows][:3], "gift": target, "win": res["win"],
+                "chance": round(res["chance"] * 100, 1)})
+        db.conn.commit()
+    return ok(u["id"], win=res["win"], roll=res["roll"], chance=res["chance"], item=item)
 
 
 async def api_daily(request: web.Request) -> web.Response:
     data = auth(request)
     async with db.lock:
-        row, _ = await get_or_create(data["user"]["id"], display_name(data["user"]))
-        state = json.loads(row["state"])
-        game.tick(state)
-        reward = game.claim_daily(state)
-        db.save(row["id"], state)
-    return respond(row, state, reward=reward)
+        u, _ = get_or_create(data["user"]["id"], display_name(data["user"]))
+        reward, streak, last = game.claim_daily(u["streak"], u["last_daily"])
+        if reward:
+            db.update_user(u["id"], streak=streak, last_daily=last)
+            db.add_coins(u["id"], reward)
+            db.conn.commit()
+    return ok(u["id"], reward=reward)
+
+
+async def api_feed(request: web.Request) -> web.Response:
+    return web.json_response({"ok": True, "feed": db.feed()})
 
 
 async def api_top(request: web.Request) -> web.Response:
-    rows = db.top()
     return web.json_response({"ok": True, "top": [
-        {"name": r["name"], "total": int(r["total"]), "league": game.league(r["total"])} for r in rows]})
+        {"id": r["id"], "name": r["name"], "worth": r["worth"], "count": r["cnt"]} for r in db.top()]})
 
 
 async def api_invoice(request: web.Request) -> web.Response:
     data, payload = auth(request), await body(request)
-    item = str(payload.get("item"))
-    if item not in game.SHOP:
+    pack = str(payload.get("item"))
+    if pack not in game.SHOP:
         raise web.HTTPBadRequest(text="Нет такого товара")
-    shop = game.SHOP[item]
-    bot: Bot = request.app["bot"]
-    link = await bot.create_invoice_link(
-        title=shop["title"], description=shop["desc"],
-        payload=f"{item}:{data['user']['id']}", currency="XTR",
-        prices=[LabeledPrice(label=shop["title"], amount=shop["stars"])])
+    p = game.SHOP[pack]
+    link = await request.app["bot"].create_invoice_link(
+        title=p["title"], description=f"{p['title']} для GIFT LAB",
+        payload=f"{pack}:{data['user']['id']}", currency="XTR",
+        prices=[LabeledPrice(label=p["title"], amount=p["stars"])])
     return web.json_response({"ok": True, "link": link})
 
 
@@ -261,14 +360,13 @@ def build_app(bot: Bot) -> web.Application:
     app = web.Application(middlewares=[cors])
     app["bot"] = bot
     app.router.add_get("/", index)
-    app.router.add_post("/api/state", api_state)
-    app.router.add_post("/api/sync", api_sync)
-    app.router.add_post("/api/buy", api_buy)
-    app.router.add_post("/api/daily", api_daily)
+    posts = {"state": api_state, "case": api_case, "sell": api_sell, "upgrade": api_upgrade,
+             "daily": api_daily, "invoice": api_invoice}
+    for name, handler in posts.items():
+        app.router.add_post(f"/api/{name}", handler)
+        app.router.add_route("OPTIONS", f"/api/{name}", lambda r: web.Response())
+    app.router.add_get("/api/feed", api_feed)
     app.router.add_get("/api/top", api_top)
-    app.router.add_post("/api/invoice", api_invoice)
-    for path in ("/api/state", "/api/sync", "/api/buy", "/api/daily", "/api/invoice"):
-        app.router.add_route("OPTIONS", path, lambda r: web.Response())
     return app
 
 
@@ -278,25 +376,25 @@ dp = Dispatcher()
 
 def play_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[[
-        InlineKeyboardButton(text="⚡ Играть", web_app=WebAppInfo(url=WEBAPP_URL))]])
+        InlineKeyboardButton(text="🎁 Открыть GIFT LAB", web_app=WebAppInfo(url=WEBAPP_URL))]])
 
 
 @dp.message(CommandStart())
 async def cmd_start(message: Message, command: CommandObject, bot: Bot) -> None:
     user = message.from_user
     async with db.lock:
-        row, is_new = await get_or_create(user.id, user.full_name, command.args)
+        row, is_new = get_or_create(user.id, user.full_name, command.args)
     me = await bot.get_me()
     ref_link = f"https://t.me/{me.username}?start=ref_{user.id}"
     text = (
-        "<b>RGB ELITE: Neon Core</b> ⚡\n\n"
-        "Тапай по ядру, лови комбо, когда цвет ядра совпадает с целью, "
-        "прокачивай майнер и поднимайся из Бронзы в <b>RGB Элиту</b>.\n\n"
+        "<b>GIFT LAB</b> 🎁\n\n"
+        "Открывай кейсы, собирай подарки с номерами и <b>апгрейдь</b> их в более дорогие. "
+        "Чем больше разница в цене — тем меньше шанс, но тем круче выигрыш.\n\n"
         f"👥 Друг по твоей ссылке: тебе +{game.REF_BONUS_INVITER}💎, ему +{game.REF_BONUS_INVITEE}💎\n"
         f"<code>{ref_link}</code>"
     )
     if is_new and row["referrer"]:
-        text += f"\n\n🎁 Ты пришёл по приглашению: +{game.REF_BONUS_INVITEE}💎 уже на балансе!"
+        text += f"\n\n🎉 Ты пришёл по приглашению: +{game.REF_BONUS_INVITEE}💎 уже на балансе!"
         try:
             await bot.send_message(row["referrer"], f"👥 {user.full_name} присоединился по твоей ссылке! "
                                                     f"+{game.REF_BONUS_INVITER}💎")
@@ -307,9 +405,9 @@ async def cmd_start(message: Message, command: CommandObject, bot: Bot) -> None:
 
 @dp.message(Command("top"))
 async def cmd_top(message: Message) -> None:
-    lines = [f"{i}. {r['name']} — {int(r['total']):,}💎".replace(",", " ")
+    lines = [f"{i}. {r['name']} — {r['worth']:,}💎 ({r['cnt']} шт.)".replace(",", " ")
              for i, r in enumerate(db.top(10), 1)]
-    await message.answer("🏆 <b>Топ-10 игроков</b>\n\n" + ("\n".join(lines) or "Пока пусто — стань первым!"))
+    await message.answer("🏆 <b>Топ коллекционеров</b>\n\n" + ("\n".join(lines) or "Пока пусто — стань первым!"))
 
 
 @dp.message(Command("paysupport"))
@@ -321,27 +419,25 @@ async def cmd_paysupport(message: Message) -> None:
 
 @dp.pre_checkout_query()
 async def pre_checkout(query: PreCheckoutQuery) -> None:
-    item = query.invoice_payload.split(":")[0]
-    await query.answer(ok=item in game.SHOP, error_message="Товар недоступен")
+    pack = query.invoice_payload.split(":")[0]
+    await query.answer(ok=pack in game.SHOP, error_message="Товар недоступен")
 
 
 @dp.message(F.successful_payment)
 async def paid(message: Message) -> None:
     sp = message.successful_payment
-    item = sp.invoice_payload.split(":")[0]
+    pack = sp.invoice_payload.split(":")[0]
     uid = message.from_user.id
     async with db.lock:
         if db.conn.execute("SELECT 1 FROM payments WHERE charge_id=?",
                            (sp.telegram_payment_charge_id,)).fetchone():
             return  # уже учли
-        row, _ = await get_or_create(uid, message.from_user.full_name)
-        state = json.loads(row["state"])
-        game.apply_shop_item(state, item)
-        db.save(uid, state)
+        get_or_create(uid, message.from_user.full_name)
+        db.add_coins(uid, game.SHOP[pack]["coins"])
         db.conn.execute("INSERT INTO payments VALUES (?,?,?,?,?)",
-                        (sp.telegram_payment_charge_id, uid, item, sp.total_amount, time.time()))
+                        (sp.telegram_payment_charge_id, uid, pack, sp.total_amount, time.time()))
         db.conn.commit()
-    await message.answer(f"✅ Оплата прошла: <b>{game.SHOP[item]['title']}</b>. Возвращайся в игру!",
+    await message.answer(f"✅ Оплата прошла: +{game.SHOP[pack]['coins']:,}💎. Удачных апгрейдов!".replace(",", " "),
                          reply_markup=play_keyboard() if WEBAPP_URL else None)
 
 
@@ -361,7 +457,7 @@ async def main() -> None:
     await web.TCPSite(runner, HOST, PORT).start()
     log.info("Игра доступна на http://%s:%s", HOST, PORT)
     if not WEBAPP_URL:
-        log.warning("WEBAPP_URL не задан — кнопка «Играть» в боте не появится")
+        log.warning("WEBAPP_URL не задан — кнопка в боте не появится")
 
     try:
         await dp.start_polling(bot)
