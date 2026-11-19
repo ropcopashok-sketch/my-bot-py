@@ -275,9 +275,11 @@ function chanceOf(inputValue, targetValue) {
 const Local = (() => {
   const KEY = "gift-lab-save";
   const today = (d = new Date()) => d.toISOString().slice(0, 10);
-  let s = JSON.parse(localStorage.getItem(KEY) || "null") || { coins: CFG.start_coins, items: [], last_free: 0,
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(KEY) || "null"); } catch {}
+  let s = saved || { coins: CFG.start_coins, items: [], last_free: 0,
             streak: 0, last_daily: "", minted: {}, next: 1, feed: [] };
-  const save = () => localStorage.setItem(KEY, JSON.stringify(s));
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch {} };
   const now = () => Date.now() / 1000;
   function mint(gift, bg) {
     s.minted[gift] = (s.minted[gift] || 0) + 1;
