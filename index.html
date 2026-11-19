@@ -1,87 +1,522 @@
 <!DOCTYPE html>
-<html lang="uk">
+<html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <script src="https://tailwindcss.com"></script>
-    <link href="https://unpkg.com" rel="stylesheet">
-    <script src="https://telegram.org"></script>
-    <style>
-        body { background: #050505; color: white; font-family: -apple-system, BlinkMacSystemFont, sans-serif; overflow-x: hidden; }
-        /* Ефект скляних карток */
-        .glass-card { 
-            background: rgba(255, 255, 255, 0.03); 
-            backdrop-filter: blur(15px); 
-            -webkit-backdrop-filter: blur(15px);
-            border: 1px solid rgba(255, 255, 255, 0.08); 
-            border-radius: 24px; 
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
-        }
-        .neon-text { text-shadow: 0 0 10px rgba(59, 130, 246, 0.5); }
-        .blue-gradient { background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%); }
-        .step-number { font-size: 40px; opacity: 0.05; font-weight: 900; position: absolute; right: 15px; top: 5px; font-style: italic; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>RGB ELITE: Neon Core</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root {
+    --bg: #050505; --card: rgba(255,255,255,.04); --line: rgba(255,255,255,.08);
+    --muted: #8a8a93; --blue: #3b82f6; --r: #ff3b5c; --g: #22e07a; --b: #3b82f6;
+    --core: var(--b);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--bg); color: #fff; height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    overscroll-behavior: none; user-select: none; -webkit-user-select: none; }
+  body { padding: 16px 16px 96px; overflow-x: hidden; }
+  .glass { background: var(--card); border: 1px solid var(--line); border-radius: 22px;
+    backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); box-shadow: 0 8px 32px rgba(0,0,0,.8); }
+  header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+  .logo { font-size: 22px; font-weight: 900; font-style: italic; letter-spacing: -1px; color: var(--blue);
+    text-shadow: 0 0 12px rgba(59,130,246,.6); text-transform: uppercase; }
+  .pill { font-size: 10px; font-weight: 800; text-transform: uppercase; padding: 5px 10px; border-radius: 999px;
+    background: rgba(59,130,246,.1); color: #93b8ff; border: 1px solid rgba(59,130,246,.25); }
+  .pill.off { background: rgba(255,255,255,.05); color: var(--muted); border-color: var(--line); }
+  .muted { color: var(--muted); }
+  .small { font-size: 11px; }
+  .label { font-size: 10px; letter-spacing: .25em; text-transform: uppercase; color: var(--muted); }
+  .balance { text-align: center; padding: 16px; margin-bottom: 12px; }
+  .balance h2 { font-size: 44px; margin: 6px 0 8px; font-weight: 900; letter-spacing: -2px; }
+  .row { display: flex; gap: 8px; align-items: center; }
+  .between { justify-content: space-between; }
+  .bar { height: 8px; border-radius: 99px; background: rgba(255,255,255,.06); overflow: hidden; }
+  .bar > i { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, #2563eb, #60a5fa);
+    transition: width .2s; }
+  .bar.energy > i { background: linear-gradient(90deg, #f59e0b, #fde047); }
+
+  /* ядро */
+  .arena { position: relative; display: flex; flex-direction: column; align-items: center; margin: 10px 0 6px; }
+  .target { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; font-size: 12px; font-weight: 800;
+    text-transform: uppercase; letter-spacing: .15em; }
+  .dot { width: 18px; height: 18px; border-radius: 50%; box-shadow: 0 0 14px currentColor; }
+  .core-wrap { position: relative; width: 240px; height: 240px; }
+  .core { position: absolute; inset: 0; border-radius: 50%; border: none; cursor: pointer; outline: none;
+    background: radial-gradient(circle at 35% 30%, #fff 0%, var(--core) 22%, #000 78%);
+    box-shadow: 0 0 40px var(--core), 0 0 100px color-mix(in srgb, var(--core) 50%, transparent), inset 0 0 40px rgba(0,0,0,.6);
+    transition: transform .06s, background .25s, box-shadow .25s; touch-action: manipulation; }
+  .core:active { transform: scale(.94); }
+  .ring { position: absolute; inset: -14px; border-radius: 50%; border: 2px dashed color-mix(in srgb, var(--core) 60%, transparent);
+    animation: spin 12s linear infinite; pointer-events: none; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .float { position: fixed; pointer-events: none; font-weight: 900; font-size: 22px; z-index: 50;
+    animation: up .8s ease-out forwards; text-shadow: 0 0 10px rgba(0,0,0,.8); }
+  @keyframes up { to { transform: translateY(-90px) scale(1.2); opacity: 0; } }
+  .combo { margin-top: 18px; font-weight: 900; font-size: 14px; letter-spacing: .1em; text-transform: uppercase; height: 20px; }
+  .combo .x { font-size: 20px; }
+  .turbo { color: #fde047; text-shadow: 0 0 10px #f59e0b; }
+  .shake { animation: shake .25s; }
+  @keyframes shake { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+
+  /* списки */
+  h3 { font-size: 15px; font-weight: 900; text-transform: uppercase; letter-spacing: .15em; margin: 6px 4px 12px;
+    display: flex; gap: 10px; align-items: center; }
+  h3::before { content: ""; width: 22px; height: 4px; border-radius: 4px; background: var(--blue); }
+  .card { padding: 16px; margin-bottom: 10px; position: relative; overflow: hidden; }
+  .card b { font-size: 14px; }
+  .card .num { position: absolute; right: 12px; top: 0; font-size: 44px; opacity: .06; font-weight: 900; font-style: italic; }
+  .btn { border: none; border-radius: 16px; padding: 12px 16px; font-weight: 900; font-size: 12px; color: #fff;
+    letter-spacing: .1em; text-transform: uppercase; background: linear-gradient(90deg, #3b82f6, #2563eb);
+    box-shadow: 0 6px 20px rgba(37,99,235,.3); cursor: pointer; transition: transform .1s; white-space: nowrap; }
+  .btn:active { transform: scale(.95); }
+  .btn[disabled], .btn.gold[disabled] { background: #1f1f24; color: #55555c; box-shadow: none; }
+  .btn.gold { background: linear-gradient(90deg, #f59e0b, #eab308); box-shadow: 0 6px 20px rgba(234,179,8,.3); }
+  .days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin: 12px 0; }
+  .day { text-align: center; padding: 8px 2px; border-radius: 12px; background: rgba(255,255,255,.04);
+    border: 1px solid var(--line); font-size: 10px; }
+  .day.done { background: rgba(59,130,246,.18); border-color: rgba(59,130,246,.5); }
+  .day.next { border-color: #eab308; box-shadow: 0 0 10px rgba(234,179,8,.4); }
+  .top-item { display: flex; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid var(--line); font-size: 13px; }
+  .top-item:last-child { border: none; }
+  .top-item .pos { width: 28px; color: var(--muted); font-weight: 800; }
+  .me { background: rgba(59,130,246,.12); }
+
+  /* навигация */
+  nav { position: fixed; left: 12px; right: 12px; bottom: 12px; display: grid; grid-template-columns: repeat(5, 1fr);
+    padding: 6px; z-index: 40; }
+  nav button { background: none; border: none; color: var(--muted); font-size: 10px; font-weight: 800; padding: 8px 0;
+    border-radius: 14px; text-transform: uppercase; letter-spacing: .05em; cursor: pointer; }
+  nav button span { display: block; font-size: 20px; margin-bottom: 2px; }
+  nav button.active { color: #fff; background: rgba(59,130,246,.18); }
+  .tab { display: none; }
+  .tab.active { display: block; animation: fade .25s; }
+  @keyframes fade { from { opacity: 0; transform: translateY(8px); } }
+  .toast { position: fixed; left: 50%; top: 16px; transform: translateX(-50%); padding: 10px 16px; border-radius: 14px;
+    background: #111827; border: 1px solid var(--line); font-size: 13px; font-weight: 700; z-index: 99;
+    opacity: 0; transition: opacity .2s; pointer-events: none; max-width: 90%; text-align: center; }
+  .toast.show { opacity: 1; }
+</style>
 </head>
-<body class="p-5 pb-24">
+<body>
 
-    <!-- Header -->
-    <header class="flex justify-between items-center mb-8" data-aos="fade-down">
-        <h1 class="text-3xl font-black italic tracking-tighter text-blue-500 neon-text uppercase">RGB ELITE</h1>
-        <div class="bg-blue-500/10 text-blue-400 px-3 py-1 rounded-full text-[10px] font-bold border border-blue-500/20 uppercase">System Active</div>
-    </header>
+<header>
+  <div class="logo">RGB ELITE</div>
+  <div id="mode" class="pill off">Загрузка…</div>
+</header>
 
-    <!-- Головна картка Балансу -->
-    <div class="glass-card p-8 text-center mb-10 border-blue-500/20" data-aos="zoom-in">
-        <p class="text-zinc-500 text-[10px] uppercase tracking-[0.3em] mb-3">Твій поточний баланс</p>
-        <h2 class="text-6xl font-black mb-6 tracking-tighter">$0.00</h2>
-        <div class="flex justify-center gap-2">
-            <span class="bg-zinc-800 text-zinc-400 text-[9px] px-3 py-1.5 rounded-xl font-black uppercase border border-zinc-700">RATE: $0.3</span>
-            <span class="bg-blue-600/20 text-blue-400 text-[9px] px-3 py-1.5 rounded-xl font-black uppercase border border-blue-500/20">MIN: 5 PERS</span>
-        </div>
+<!-- ============ ИГРА ============ -->
+<section class="tab active" id="tab-play">
+  <div class="glass balance">
+    <div class="label">Кристаллы</div>
+    <h2><span id="coins">0</span> 💎</h2>
+    <div class="row between small"><b id="league">Бронза</b><span class="muted" id="league-next"></span></div>
+    <div class="bar" style="margin-top:6px"><i id="league-bar" style="width:0"></i></div>
+  </div>
+
+  <div class="arena">
+    <div class="target">Цель <span id="target-dot" class="dot"></span> <span id="target-name" class="muted"></span></div>
+    <div class="core-wrap">
+      <div class="ring"></div>
+      <button class="core" id="core" aria-label="Тапнуть ядро"></button>
     </div>
+    <div class="combo" id="combo"></div>
+  </div>
 
-    <!-- Навчання -->
-    <div class="space-y-6">
-        <h3 class="text-lg font-black uppercase tracking-widest text-white ml-2 flex items-center gap-3" data-aos="fade-right">
-            <span class="w-6 h-1 bg-blue-500 rounded-full"></span> ШКОЛА АРБІТРАЖУ
-        </h3>
-
-        <!-- Крок 01 -->
-        <div class="glass-card p-6 relative overflow-hidden" data-aos="fade-up">
-            <div class="step-number">01</div>
-            <h4 class="text-blue-500 font-black text-xs uppercase mb-2 tracking-widest">Перший контакт</h4>
-            <p class="text-sm text-zinc-400 leading-relaxed">Дай посилання. Перевір підписку на спонсорів. Поясни: <i>"Арбітраж — це перелив людей"</i>.</p>
-        </div>
-
-        <!-- Крок 02 -->
-        <div class="glass-card p-6 relative overflow-hidden" data-aos="fade-up" data-aos-delay="100">
-            <div class="step-number">02</div>
-            <h4 class="text-blue-500 font-black text-xs uppercase mb-2 tracking-widest">Прогрів ТТ</h4>
-            <p class="text-sm text-zinc-400 leading-relaxed">Шукай "Арбітраж", "Темки". Пиши коменти "грею". Грій 2-3 дні, поки стрічка не стане тематичною.</p>
-        </div>
-
-        <!-- Крок 03 -->
-        <div class="glass-card p-6 relative overflow-hidden" data-aos="fade-up" data-aos-delay="200">
-            <div class="step-number">03</div>
-            <h4 class="text-blue-500 font-black text-xs uppercase mb-2 tracking-widest">Залучення</h4>
-            <p class="text-sm text-zinc-400 leading-relaxed">Створи новий ТТ. Спам коменти: "Набір в тіму! 0.5$ за лід". Викладай крео 2 рази на день.</p>
-        </div>
+  <div class="glass card">
+    <div class="row between small"><b>⚡ Энергия</b><span><span id="energy">0</span> / <span id="max-energy">0</span></span></div>
+    <div class="bar energy" style="margin-top:8px"><i id="energy-bar" style="width:100%"></i></div>
+    <div class="row between small muted" style="margin-top:10px">
+      <span>За тап: <b id="per-tap" style="color:#fff">1</b></span>
+      <span>Майнер: <b id="per-sec" style="color:#fff">0</b>/сек</span>
     </div>
+  </div>
+  <p class="small muted" style="text-align:center;line-height:1.5">
+    Тапай, когда цвет ядра совпадает с <b>целью</b> — растёт комбо до x3.<br>Промах сбрасывает комбо.
+  </p>
+</section>
 
-    <!-- Кнопка знизу -->
-    <div class="fixed bottom-6 left-6 right-6" data-aos="fade-up" data-aos-offset="0">
-        <button onclick="Telegram.WebApp.close()" class="w-full blue-gradient py-5 rounded-[22px] font-black text-xs tracking-[0.2em] uppercase shadow-xl shadow-blue-600/30 active:scale-95 transition-all">
-            ОТРИМАТИ ПОСИЛАННЯ
-        </button>
-    </div>
+<!-- ============ ПРОКАЧКА ============ -->
+<section class="tab" id="tab-upgrades">
+  <h3>Прокачка</h3>
+  <div id="upgrades"></div>
+</section>
 
-    <script src="https://unpkg.com"></script>
-    <script>
-        AOS.init({ duration: 800, once: true });
-        const tg = window.Telegram.WebApp;
-        tg.expand();
-        tg.setHeaderColor('#050505');
-        tg.setBackgroundColor('#050505');
-    </script>
+<!-- ============ БОНУСЫ ============ -->
+<section class="tab" id="tab-bonus">
+  <h3>Ежедневная награда</h3>
+  <div class="glass card">
+    <div class="small muted">Заходи каждый день подряд — награда растёт. Пропуск сбрасывает серию.</div>
+    <div class="days" id="days"></div>
+    <button class="btn gold" style="width:100%" id="daily-btn">Забрать</button>
+  </div>
+
+  <h3>Друзья</h3>
+  <div class="glass card">
+    <div class="num">👥</div>
+    <b>Приглашено: <span id="refs">0</span></b>
+    <p class="small muted">За каждого друга: тебе <b id="ref-a">1000</b>💎, ему <b id="ref-b">500</b>💎 на старте.</p>
+    <button class="btn" style="width:100%" id="invite-btn">Пригласить друга</button>
+  </div>
+</section>
+
+<!-- ============ ТОП ============ -->
+<section class="tab" id="tab-top">
+  <h3>Рейтинг</h3>
+  <div class="glass card small" id="my-rank"></div>
+  <div class="glass" id="top"></div>
+</section>
+
+<!-- ============ МАГАЗИН ============ -->
+<section class="tab" id="tab-shop">
+  <h3>Магазин</h3>
+  <div id="turbo-info" class="glass card small turbo" style="display:none"></div>
+  <div id="shop"></div>
+  <p class="small muted" style="text-align:center">Оплата через Telegram Stars ⭐ — безопасно, прямо в Telegram.</p>
+</section>
+
+<nav class="glass">
+  <button data-tab="play" class="active"><span>⚡</span>Игра</button>
+  <button data-tab="upgrades"><span>🚀</span>Прокачка</button>
+  <button data-tab="bonus"><span>🎁</span>Бонусы</button>
+  <button data-tab="top"><span>🏆</span>Топ</button>
+  <button data-tab="shop"><span>⭐</span>Магазин</button>
+</nav>
+<div class="toast" id="toast"></div>
+
+<script>
+// Если игра (index.html) лежит на другом домене, чем bot.py (например, GitHub Pages),
+// впиши сюда адрес сервера: const API_BASE = "https://my-server.com";
+const API_BASE = "";
+
+const tg = window.Telegram?.WebApp;
+const initData = tg?.initData || "";
+const $ = id => document.getElementById(id);
+const fmt = n => Math.floor(n).toLocaleString("ru-RU");
+
+// ---------------------------------------------------------------- конфиг (копия game.py для офлайна)
+let CFG = {
+  upgrades: {
+    tap:  { title: "Сила тапа",  desc: "+1 кристалл за тап",       base: 50,  growth: 1.6, max: 30 },
+    cap:  { title: "Батарея",    desc: "+250 к энергии",          base: 100, growth: 1.7, max: 20 },
+    auto: { title: "Авто-майнер", desc: "+0.5 кристалла в секунду", base: 200, growth: 1.8, max: 40 },
+  },
+  leagues: [[0,"Бронза"],[5000,"Серебро"],[25000,"Золото"],[100000,"Платина"],[500000,"Алмаз"],[2000000,"RGB Элита"]],
+  daily: [500,1000,2000,3500,5000,7500,12000],
+  shop: {
+    turbo:  { title: "Турбо x2 на 1 час", desc: "Все тапы и пассивный доход x2 целый час", stars: 25 },
+    refill: { title: "Полная энергия",     desc: "Мгновенно восстанавливает всю энергию",  stars: 10 },
+    pack:   { title: "Мешок кристаллов",   desc: "+50 000 кристаллов сразу",               stars: 50 },
+  },
+  regen: 2, max_combo: 3, ref_inviter: 1000, ref_invitee: 500,
+};
+
+// ---------------------------------------------------------------- офлайн-движок (как game.py)
+const Local = (() => {
+  const KEY = "rgb-elite-save";
+  const BASE_ENERGY = 500, PER_LVL = 250, MAX_TPS = 20, OFFLINE_CAP = 3 * 3600;
+  const now = () => Date.now() / 1000;
+  const today = (d = new Date()) => d.toISOString().slice(0, 10);
+  let s = JSON.parse(localStorage.getItem(KEY) || "null") || {
+    coins: 0, total: 0, energy: BASE_ENERGY, ts: now(), tap_lvl: 0, cap_lvl: 0, auto_lvl: 0,
+    turbo_until: 0, streak: 0, last_daily: "", last_sync: now(),
+  };
+  const save = () => localStorage.setItem(KEY, JSON.stringify(s));
+  const maxE = () => BASE_ENERGY + PER_LVL * s.cap_lvl;
+  const cost = k => Math.floor(CFG.upgrades[k].base * CFG.upgrades[k].growth ** s[k + "_lvl"]);
+  const earn = a => { s.coins += a; s.total += a; };
+  function tick() {
+    const t = now(), dt = Math.max(0, t - s.ts);
+    s.energy = Math.min(maxE(), s.energy + dt * CFG.regen);
+    earn(0.5 * s.auto_lvl * Math.min(dt, OFFLINE_CAP) * (s.turbo_until > t ? 2 : 1));
+    s.ts = t;
+  }
+  function view(extra = {}) {
+    const t = now();
+    return { ok: true, ...extra, state: {
+      coins: Math.floor(s.coins), total: Math.floor(s.total), energy: Math.floor(s.energy), max_energy: maxE(),
+      tap_power: 1 + s.tap_lvl, auto_rate: 0.5 * s.auto_lvl,
+      levels: { tap: s.tap_lvl, cap: s.cap_lvl, auto: s.auto_lvl },
+      costs: { tap: cost("tap"), cap: cost("cap"), auto: cost("auto") },
+      turbo_left: Math.max(0, Math.floor(s.turbo_until - t)), streak: s.streak,
+      daily_ready: s.last_daily !== today(), league: leagueOf(s.total).name, refs: 0, rank: 1,
+    }};
+  }
+  return {
+    state() { tick(); s.last_sync = now(); save(); return view({ config: CFG }); },
+    sync({ taps, combo }) {
+      const t = now(), elapsed = t - s.last_sync; tick();
+      taps = Math.min(taps, Math.floor(s.energy), Math.floor(Math.max(elapsed, 1) * MAX_TPS));
+      let left = taps, w = 0;
+      Object.entries(combo || {}).sort((a, b) => b[0] - a[0]).forEach(([m, n]) => {
+        n = Math.min(n, left); w += Math.min(CFG.max_combo, +m) * n; left -= n; });
+      w += left;
+      s.energy -= taps; earn(w * (1 + s.tap_lvl) * (s.turbo_until > t ? 2 : 1));
+      s.last_sync = t; save(); return view();
+    },
+    buy({ key }) {
+      tick(); let error = null;
+      if (s[key + "_lvl"] >= CFG.upgrades[key].max) error = "Максимальный уровень";
+      else if (s.coins < cost(key)) error = "Не хватает кристаллов";
+      else { s.coins -= cost(key); s[key + "_lvl"]++; }
+      save(); return view({ error });
+    },
+    daily() {
+      tick(); let reward = 0;
+      if (s.last_daily !== today()) {
+        const y = new Date(); y.setDate(y.getDate() - 1);
+        s.streak = s.last_daily === today(y) ? s.streak + 1 : 1;
+        s.last_daily = today();
+        reward = CFG.daily[Math.min(s.streak, CFG.daily.length) - 1]; earn(reward);
+      }
+      save(); return view({ reward });
+    },
+  };
+})();
+
+// ---------------------------------------------------------------- транспорт: сервер или офлайн
+let online = false;
+async function api(name, payload = {}) {
+  if (!online) return Local[name](payload);
+  const r = await fetch(`${API_BASE}/api/${name}`, {
+    method: "POST", headers: { "Content-Type": "application/json", "X-Init-Data": initData },
+    body: JSON.stringify(payload),
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+// ---------------------------------------------------------------- состояние на клиенте
+let S = null, sTime = 0;          // последнее подтверждённое состояние и когда оно пришло
+let pending = { taps: 0, combo: {}, coins: 0 };
+let inflight = null;
+let botUsername = null, uid = null;
+
+function leagueOf(total) {
+  let i = 0;
+  CFG.leagues.forEach(([t], j) => { if (total >= t) i = j; });
+  return { i, name: CFG.leagues[i][1], next: CFG.leagues[i + 1] };
+}
+function turboOn() { return S && S.turbo_left - (Date.now() / 1000 - sTime) > 0; }
+function elapsed() { return Date.now() / 1000 - sTime; }
+function liveCoins() {
+  const unconfirmed = pending.coins + (inflight ? inflight.coins : 0);
+  return S.coins + unconfirmed + S.auto_rate * elapsed() * (turboOn() ? 2 : 1);
+}
+function liveTotal() { return S.total + (liveCoins() - S.coins); }
+function liveEnergy() {
+  const used = pending.taps + (inflight ? inflight.taps : 0);
+  return Math.max(0, Math.min(S.max_energy, S.energy + CFG.regen * elapsed()) - used);
+}
+function setState(res) { S = res.state; sTime = Date.now() / 1000; }
+
+// ---------------------------------------------------------------- RGB-механика
+const COLORS = [
+  { key: "r", name: "Красный", css: "var(--r)" },
+  { key: "g", name: "Зелёный", css: "var(--g)" },
+  { key: "b", name: "Синий",   css: "var(--b)" },
+];
+let coreColor = 2, targetColor = 0, streakHits = 0, mult = 1;
+function setCore(i) { coreColor = i; document.documentElement.style.setProperty("--core", COLORS[i].css); }
+function setTarget(i) {
+  targetColor = i; $("target-dot").style.color = COLORS[i].css; $("target-dot").style.background = COLORS[i].css;
+  $("target-name").textContent = COLORS[i].name;
+}
+function cycleCore() {
+  setCore((coreColor + 1) % 3);
+  setTimeout(cycleCore, 700 + Math.random() * 700);   // ритм немного «плавает»
+}
+setInterval(() => setTarget(Math.floor(Math.random() * 3)), 7000);
+
+function renderCombo() {
+  const el = $("combo");
+  const t = turboOn() ? ' <span class="turbo">· ТУРБО x2</span>' : "";
+  el.innerHTML = mult > 1 ? `Комбо <span class="x" style="color:${COLORS[targetColor].css}">x${mult}</span>${t}`
+                          : (streakHits ? `Попаданий: ${streakHits}/5${t}` : t);
+}
+
+function onTap(e) {
+  if (!S) return;
+  if (liveEnergy() < 1) { toast("Нет энергии — подожди или купи в магазине"); haptic("error"); return; }
+  const hit = coreColor === targetColor;
+  if (hit) { streakHits++; if (streakHits % 5 === 0) mult = Math.min(CFG.max_combo, mult + 1); }
+  else { if (mult > 1) { $("core").classList.add("shake"); setTimeout(() => $("core").classList.remove("shake"), 250); }
+         streakHits = 0; mult = 1; }
+  const m = hit ? mult : 1;
+  const gain = m * S.tap_power * (turboOn() ? 2 : 1);
+  pending.taps++; pending.coins += gain;
+  if (m > 1) pending.combo[m] = (pending.combo[m] || 0) + 1;
+  const p = e.touches ? e.touches[0] : e;
+  floatText(`+${gain}`, p.clientX, p.clientY, hit ? COLORS[coreColor].css : "#fff");
+  haptic(hit ? "medium" : "light");
+  renderCombo(); render();
+}
+
+async function flush() {
+  if (inflight || !pending.taps) return;
+  inflight = pending; pending = { taps: 0, combo: {}, coins: 0 };
+  try { setState(await api("sync", { taps: inflight.taps, combo: inflight.combo })); }
+  catch (e) { console.warn(e); }
+  inflight = null; render();
+}
+setInterval(flush, 3000);
+document.addEventListener("visibilitychange", () => document.hidden && flush());
+
+// ---------------------------------------------------------------- отрисовка
+function render() {
+  if (!S) return;
+  const coins = liveCoins(), en = liveEnergy();
+  $("coins").textContent = fmt(coins);
+  $("energy").textContent = fmt(en); $("max-energy").textContent = fmt(S.max_energy);
+  $("energy-bar").style.width = (en / S.max_energy * 100) + "%";
+  $("per-tap").textContent = S.tap_power * (turboOn() ? 2 : 1);
+  $("per-sec").textContent = S.auto_rate * (turboOn() ? 2 : 1);
+  const total = liveTotal(), L = leagueOf(total);
+  $("league").textContent = "🏅 " + L.name;
+  if (L.next) {
+    const from = CFG.leagues[L.i][0];
+    $("league-next").textContent = `до «${L.next[1]}»: ${fmt(L.next[0] - total)}`;
+    $("league-bar").style.width = ((total - from) / (L.next[0] - from) * 100) + "%";
+  } else { $("league-next").textContent = "Высшая лига!"; $("league-bar").style.width = "100%"; }
+  document.querySelectorAll("[data-cost]").forEach(b => b.disabled = coins < +b.dataset.cost);
+}
+setInterval(render, 250);
+
+function renderUpgrades() {
+  const icons = { tap: "👆", cap: "🔋", auto: "⛏️" };
+  $("upgrades").innerHTML = Object.entries(CFG.upgrades).map(([k, u], i) => {
+    const lvl = S.levels[k], maxed = lvl >= u.max;
+    return `<div class="glass card"><div class="num">0${i + 1}</div>
+      <div class="row between"><div><b>${icons[k]} ${u.title}</b> <span class="small muted">ур. ${lvl}/${u.max}</span>
+      <div class="small muted" style="margin-top:4px">${u.desc}</div></div>
+      ${maxed ? '<button class="btn" disabled>MAX</button>'
+              : `<button class="btn" data-buy="${k}" data-cost="${S.costs[k]}">${fmt(S.costs[k])} 💎</button>`}
+      </div></div>`;
+  }).join("");
+  render();
+}
+
+function renderBonus() {
+  const nextDay = S.daily_ready ? Math.min(S.streak + 1, 7) : 0;
+  $("days").innerHTML = CFG.daily.map((r, i) => {
+    const done = i < (S.daily_ready ? Math.min(S.streak, 6) : Math.min(S.streak, 7));
+    return `<div class="day ${done ? "done" : ""} ${i + 1 === nextDay ? "next" : ""}">
+      <div class="muted">День ${i + 1}</div><b>${r >= 1000 ? r / 1000 + "K" : r}</b></div>`;
+  }).join("");
+  $("daily-btn").disabled = !S.daily_ready;
+  $("daily-btn").textContent = S.daily_ready ? `Забрать ${fmt(CFG.daily[nextDay - 1])} 💎` : "Возвращайся завтра";
+  $("refs").textContent = S.refs; $("ref-a").textContent = fmt(CFG.ref_inviter); $("ref-b").textContent = fmt(CFG.ref_invitee);
+}
+
+async function renderTop() {
+  $("my-rank").innerHTML = `Твоё место: <b>#${S.rank}</b> · всего добыто <b>${fmt(liveTotal())}</b> 💎`;
+  if (!online) { $("top").innerHTML = `<div class="top-item muted">Рейтинг работает, когда игра открыта в Telegram</div>`; return; }
+  try {
+    const r = await (await fetch(`${API_BASE}/api/top`)).json();
+    $("top").innerHTML = r.top.map((p, i) => `<div class="top-item">
+      <span class="pos">${["🥇","🥈","🥉"][i] || i + 1}</span><span style="flex:1">${esc(p.name)} <span class="small muted">${p.league}</span></span>
+      <b>${fmt(p.total)}</b></div>`).join("") || `<div class="top-item muted">Пока пусто</div>`;
+  } catch { $("top").innerHTML = `<div class="top-item muted">Не удалось загрузить</div>`; }
+}
+
+function renderShop() {
+  const icons = { turbo: "🔥", refill: "⚡", pack: "💰" };
+  $("shop").innerHTML = Object.entries(CFG.shop).map(([k, it]) => `<div class="glass card">
+    <div class="row between"><div><b>${icons[k] || "⭐"} ${it.title}</b>
+    <div class="small muted" style="margin-top:4px">${it.desc}</div></div>
+    <button class="btn gold" data-shop="${k}">${it.stars} ⭐</button></div></div>`).join("");
+  const left = Math.floor(S.turbo_left - elapsed());
+  $("turbo-info").style.display = left > 0 ? "block" : "none";
+  $("turbo-info").textContent = `🔥 Турбо активно ещё ${Math.ceil(left / 60)} мин`;
+}
+
+// ---------------------------------------------------------------- действия
+document.addEventListener("click", async e => {
+  const buy = e.target.closest("[data-buy]"), shop = e.target.closest("[data-shop]");
+  if (buy) {
+    await flush();
+    const res = await api("buy", { key: buy.dataset.buy });
+    setState(res);
+    if (res.error) { toast(res.error); haptic("error"); } else { toast("Улучшено! 🚀"); haptic("success"); }
+    renderUpgrades();
+  }
+  if (shop) {
+    if (!online || !tg?.openInvoice) return toast("Покупки доступны, когда игра открыта в Telegram");
+    try {
+      const { link } = await api("invoice", { item: shop.dataset.shop });
+      tg.openInvoice(link, async status => {
+        if (status === "paid") {
+          toast("Оплачено! ⭐"); haptic("success");
+          setTimeout(async () => { await flush(); setState(await api("state")); renderShop(); render(); }, 1500);
+        }
+      });
+    } catch (err) { toast("Не удалось создать счёт"); console.warn(err); }
+  }
+});
+
+$("daily-btn").onclick = async () => {
+  await flush();
+  const res = await api("daily"); setState(res);
+  if (res.reward) { toast(`+${fmt(res.reward)} 💎 — серия ${S.streak} дн.`); haptic("success"); }
+  renderBonus(); render();
+};
+
+$("invite-btn").onclick = () => {
+  if (!botUsername) return toast("Приглашения работают в Telegram");
+  const link = `https://t.me/${botUsername}?start=ref_${uid}`;
+  const text = "Залетай в RGB ELITE — тапай ядро, лови комбо и обгоняй меня в рейтинге! ⚡";
+  const share = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`;
+  tg?.openTelegramLink ? tg.openTelegramLink(share) : window.open(share);
+};
+
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => {
+  document.querySelectorAll("nav button").forEach(x => x.classList.toggle("active", x === b));
+  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.id === "tab-" + b.dataset.tab));
+  ({ upgrades: renderUpgrades, bonus: renderBonus, top: renderTop, shop: renderShop })[b.dataset.tab]?.();
+  haptic("light");
+});
+
+const core = $("core");
+if ("ontouchstart" in window) core.addEventListener("touchstart", e => { e.preventDefault(); onTap(e); }, { passive: false });
+else core.addEventListener("mousedown", onTap);
+
+// ---------------------------------------------------------------- утилиты
+function floatText(text, x, y, color) {
+  const el = document.createElement("div");
+  el.className = "float"; el.textContent = text; el.style.color = color;
+  el.style.left = (x - 20 + Math.random() * 20) + "px"; el.style.top = (y - 30) + "px";
+  document.body.appendChild(el); setTimeout(() => el.remove(), 800);
+}
+let toastTimer;
+function toast(msg) {
+  $("toast").textContent = msg; $("toast").classList.add("show");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => $("toast").classList.remove("show"), 2200);
+}
+function haptic(kind) {
+  const h = tg?.HapticFeedback; if (!h) return;
+  ["success", "error", "warning"].includes(kind) ? h.notificationOccurred(kind) : h.impactOccurred(kind);
+}
+function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]); }
+
+// ---------------------------------------------------------------- старт
+(async function start() {
+  if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor?.("#050505"); tg.setBackgroundColor?.("#050505");
+            tg.disableVerticalSwipes?.(); }
+  let res;
+  try {
+    online = true;
+    res = await api("state");
+    if (res.config) CFG = res.config;
+    botUsername = res.bot_username; uid = res.uid;
+    $("mode").textContent = "Online"; $("mode").classList.remove("off");
+  } catch {
+    online = false;
+    res = await api("state");
+    $("mode").textContent = "Офлайн-демо";
+  }
+  setState(res);
+  setCore(2); setTarget(0); cycleCore(); renderCombo(); render();
+})();
+</script>
 </body>
 </html>
