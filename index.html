@@ -39,7 +39,8 @@
   .feed::-webkit-scrollbar { display:none; }
   .feed-item { flex:0 0 auto; display:flex; align-items:center; gap:6px; padding:6px 10px; border-radius:12px; font-size:11px;
                background:var(--card); border:1px solid var(--line); animation:pop .3s; }
-  .feed-item .e { font-size:20px; }
+  .feed-item .e { font-size:20px; display:flex; align-items:center; gap:2px; }
+  .feed-item .e .art { width:26px; height:26px; } .feed-item .e i { font-style:normal; color:var(--muted); }
   .feed-item.win { border-color:rgba(34,197,94,.45); } .feed-item.lose { border-color:rgba(239,68,68,.35); }
   @keyframes pop { from { transform:scale(.7); opacity:0; } }
 
@@ -47,6 +48,20 @@
   .gift { position:relative; border-radius:16px; padding:10px 6px 8px; text-align:center; overflow:hidden;
           border:1px solid var(--line); border-bottom:3px solid var(--tier); background:var(--card); cursor:pointer; }
   .gift .e { font-size:40px; line-height:1.2; filter:drop-shadow(0 4px 12px rgba(0,0,0,.6)); position:relative; }
+  .gift .art { width:66px; height:66px; display:block; margin:0 auto; position:relative; z-index:1;
+               filter:drop-shadow(0 6px 10px rgba(0,0,0,.55)); transition:transform .2s; }
+  .gift:active .art { transform:scale(.92); }
+  .gift.t-epic { box-shadow:inset 0 0 26px rgba(168,85,247,.22); }
+  .gift.t-legendary { box-shadow:inset 0 0 30px rgba(245,158,11,.3); }
+  .gift.t-legendary::before, .gift.t-epic::before { content:""; position:absolute; top:-50%; left:-60%; width:40%; height:200%;
+        background:linear-gradient(90deg,transparent,rgba(255,255,255,.22),transparent); transform:rotate(20deg);
+        animation:shine 3.2s ease-in-out infinite; z-index:2; pointer-events:none; }
+  .gift.t-epic::before { animation-delay:1.2s; animation-duration:4.5s; }
+  @keyframes shine { 0%,60% { left:-60%; } 100% { left:130%; } }
+  .bg-gold::after { content:""; position:absolute; inset:0; pointer-events:none; opacity:.9;
+        background-image:radial-gradient(circle,#fff 0 1px,transparent 1.5px),radial-gradient(circle,#fde68a 0 1px,transparent 1.5px);
+        background-size:23px 23px,31px 31px; background-position:3px 5px,11px 17px; animation:twinkle 2s ease-in-out infinite alternate; }
+  @keyframes twinkle { from { opacity:.25; } to { opacity:.95; } }
   .gift .n { font-size:11px; font-weight:800; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; position:relative; }
   .gift .v { font-size:11px; color:#d1d5db; position:relative; }
   .gift .s { position:absolute; left:6px; top:5px; font-size:9px; color:#d1d5db; font-weight:800; z-index:1; }
@@ -61,7 +76,19 @@
 
   /* кейсы */
   .case { display:flex; align-items:center; gap:14px; padding:14px; margin-bottom:10px; }
-  .case .icon { font-size:46px; width:64px; height:64px; display:grid; place-items:center; border-radius:18px; }
+  .case .icon { width:76px; height:76px; display:grid; place-items:center; border-radius:20px; flex:0 0 auto; }
+  .case .icon svg { width:68px; height:68px; animation:float 3s ease-in-out infinite; filter:drop-shadow(0 8px 12px rgba(0,0,0,.5)); }
+  .case:nth-child(2) .icon svg { animation-delay:-1s; } .case:nth-child(3) .icon svg { animation-delay:-2s; }
+  @keyframes float { 50% { transform:translateY(-5px) rotate(-2deg); } }
+  .case-art .lid { transform-box:fill-box; transform-origin:0% 100%; transition:transform .45s cubic-bezier(.3,1.6,.5,1), opacity .45s; }
+  .case-stage { display:flex; justify-content:center; height:200px; align-items:center; }
+  .case-stage svg { width:190px; height:190px; filter:drop-shadow(0 0 30px var(--glow,#3b82f6)); }
+  .case-stage.shaking svg { animation:caseShake .55s ease-in-out 2; }
+  .case-stage.opened .lid { transform:translate(-6px,-34px) rotate(-28deg); opacity:0; }
+  .case-stage.gone { height:0; overflow:hidden; transition:height .35s; }
+  @keyframes caseShake { 0%,100% { transform:rotate(0); } 20% { transform:rotate(-7deg) scale(1.04); } 40% { transform:rotate(6deg); }
+                         60% { transform:rotate(-5deg) scale(1.06); } 80% { transform:rotate(4deg); } }
+  svg.mini { width:22px; height:22px; }
   .odds { display:flex; gap:3px; margin-top:6px; flex-wrap:wrap; }
   .odds span { font-size:9px; padding:2px 6px; border-radius:6px; background:rgba(255,255,255,.05); border-left:2px solid var(--c); }
 
@@ -75,19 +102,36 @@
   .strip-wrap::before { top:0; border-top:14px solid #fbbf24; }
   .strip-wrap::after { bottom:0; border-bottom:14px solid #fbbf24; }
   .strip { display:flex; gap:8px; will-change:transform; }
-  .strip .gift { flex:0 0 100px; cursor:default; }
+  .strip .gift { flex:0 0 100px; cursor:default; } .strip .gift .art { width:60px; height:60px; }
+  .strip-wrap { transition:opacity .3s; } .strip-wrap.hidden { opacity:0; height:0; padding:0; border:none; }
   .result { text-align:center; margin-top:18px; display:none; }
   .result.show { display:block; animation:pop .35s; }
-  .result .gift { width:150px; margin:0 auto 12px; } .result .gift .e { font-size:70px; }
+  .result .gift { width:160px; margin:0 auto 12px; } .result .gift .e { font-size:70px; }
+  .result .gift .art { width:120px; height:120px; animation:land .6s cubic-bezier(.3,1.7,.5,1); }
+  @keyframes land { from { transform:scale(.2) rotate(-30deg); } }
+  .rays-wrap { position:relative; display:inline-block; }
+  .rays { position:absolute; left:50%; top:50%; width:420px; height:420px; margin:-210px 0 0 -210px; pointer-events:none; z-index:-1;
+          background:repeating-conic-gradient(from 0deg, var(--ray) 0 7deg, transparent 7deg 22deg);
+          -webkit-mask:radial-gradient(circle, #000 15%, transparent 65%); mask:radial-gradient(circle, #000 15%, transparent 65%);
+          animation:spin 9s linear infinite; opacity:.55; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .tier-label { display:inline-block; padding:3px 10px; border-radius:999px; font-size:11px; font-weight:900; letter-spacing:.1em;
+                text-transform:uppercase; margin:4px 0 14px; }
 
   /* апгрейд */
   .up-top { display:grid; grid-template-columns:1fr 190px 1fr; align-items:center; gap:6px; padding:12px 8px; }
   .slot { min-height:120px; display:flex; flex-direction:column; align-items:center; justify-content:center;
           border:1px dashed var(--line); border-radius:16px; padding:6px; font-size:11px; text-align:center; }
-  .slot .gift { width:100%; cursor:default; }
+  .slot .gift { width:100%; cursor:default; } .slot .gift .art { width:54px; height:54px; }
+  .slot .stack { display:flex; flex-wrap:wrap; justify-content:center; } .slot .stack .art { width:30px; height:30px; margin:-2px; }
   .wheel { position:relative; width:190px; height:190px; }
   .wheel svg { width:100%; height:100%; transform:rotate(-90deg); }
-  .wheel .needle { position:absolute; inset:0; transition:transform 4.2s cubic-bezier(.12,.75,.12,1); }
+  .wheel .needle { position:absolute; inset:0; }
+  .wheel.spinning .pct { animation:beat .5s ease-in-out infinite; }
+  @keyframes beat { 50% { transform:scale(1.12); } }
+  .wheel.won svg circle#arc { animation:arcWin .5s ease-in-out 3; }
+  @keyframes arcWin { 50% { stroke-width:24; filter:drop-shadow(0 0 16px #22c55e); } }
+  .up-top.lost { animation:fl 1s, caseShake .4s; }
   .wheel .needle::before { content:""; position:absolute; left:50%; top:4px; width:4px; height:30px; margin-left:-2px;
           background:#fff; border-radius:4px; box-shadow:0 0 12px #fff; }
   .wheel .mid { position:absolute; inset:0; display:grid; place-items:center; text-align:center; }
@@ -98,6 +142,23 @@
   .chips button.on { background:rgba(59,130,246,.25); border-color:var(--blue); }
   .targets .gift .c { font-size:11px; font-weight:900; color:#4ade80; position:relative; }
   .flash-win  { animation:fw 1s; } .flash-lose { animation:fl 1s; }
+  .icon-btn { width:36px; height:36px; border-radius:50%; border:1px solid var(--line); background:var(--card); color:#fff;
+              font-size:16px; cursor:pointer; display:grid; place-items:center; }
+  .me-chip { display:flex; align-items:center; gap:6px; cursor:pointer; }
+  .avatar { width:34px; height:34px; border-radius:50%; object-fit:cover; display:grid; place-items:center; font-weight:900;
+            background:linear-gradient(135deg,#3b82f6,#a855f7); border:2px solid rgba(255,255,255,.15); flex:0 0 auto; overflow:hidden; }
+  .lvl { font-size:10px; font-weight:900; padding:2px 7px; border-radius:999px; background:linear-gradient(90deg,#f59e0b,#eab308); color:#1a1205; }
+  .profile .top { display:flex; gap:14px; align-items:center; }
+  .profile .avatar { width:64px; height:64px; font-size:26px; }
+  .xpbar { height:7px; border-radius:99px; background:rgba(255,255,255,.07); overflow:hidden; margin:6px 0 2px; }
+  .xpbar i { display:block; height:100%; background:linear-gradient(90deg,#f59e0b,#fde047); border-radius:99px; }
+  .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-top:12px; }
+  .stat { background:rgba(255,255,255,.04); border:1px solid var(--line); border-radius:12px; padding:8px 4px; text-align:center; }
+  .stat b { display:block; font-size:15px; } .stat span { font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
+  .best { display:flex; align-items:center; gap:10px; margin-top:10px; padding:8px 10px; border-radius:14px;
+          background:linear-gradient(90deg,rgba(245,158,11,.14),transparent); border:1px solid rgba(245,158,11,.25); }
+  .best .art { width:44px; height:44px; }
+  .tiers { display:flex; gap:4px; margin-top:10px; } .tiers div { flex:1; height:6px; border-radius:6px; }
   @keyframes fw { 30% { box-shadow:0 0 60px rgba(34,197,94,.9); } }
   @keyframes fl { 30% { box-shadow:0 0 60px rgba(239,68,68,.9); } }
 
@@ -129,8 +190,10 @@
 <body>
 
 <header>
-  <div class="logo">Gift Lab</div>
-  <div class="balance"><span id="coins">0</span> 💎</div>
+  <div class="me-chip" id="me-chip"><div class="avatar" id="hdr-avatar">?</div>
+    <div><div class="logo" style="font-size:18px">Gift Lab</div><span class="lvl" id="hdr-lvl">LVL 1</span></div></div>
+  <div class="row"><button class="icon-btn" id="mute" aria-label="Звук">🔊</button>
+    <div class="balance"><span id="coins">0</span> 💎</div></div>
 </header>
 <div class="feed" id="feed"></div>
 
@@ -168,6 +231,7 @@
 
 <!-- ============ ИНВЕНТАРЬ ============ -->
 <section class="tab" id="tab-inv">
+  <div class="glass card profile" id="profile"></div>
   <h3>Инвентарь <span class="small muted" id="inv-total" style="letter-spacing:0"></span></h3>
   <div class="grid" id="inv"></div>
   <div class="glass sellbar" id="sellbar">
@@ -203,19 +267,22 @@
 
 <!-- рулетка кейса -->
 <div class="modal" id="case-modal">
-  <div class="strip-wrap"><div class="strip" id="strip"></div></div>
+  <div class="case-stage" id="case-stage"></div>
+  <div class="strip-wrap hidden" id="strip-wrap"><div class="strip" id="strip"></div></div>
   <div class="result" id="case-result"></div>
 </div>
 
 <nav class="glass">
   <button data-tab="cases" class="active"><span>📦</span>Кейсы</button>
   <button data-tab="upgrade"><span>⬆️</span>Апгрейд</button>
-  <button data-tab="inv"><span>🎒</span>Подарки</button>
+  <button data-tab="inv"><span>👤</span>Профиль</button>
   <button data-tab="top"><span>🏆</span>Топ</button>
   <button data-tab="more"><span>🎁</span>Бонусы</button>
 </nav>
 <div class="toast" id="toast"></div>
 
+<script src="assets/art.js"></script>
+<script src="assets/fx.js"></script>
 <script>
 // Если index.html лежит на другом домене, чем bot.py (например, GitHub Pages),
 // впиши сюда адрес сервера: const API_BASE = "https://my-server.com";
@@ -279,6 +346,7 @@ const Local = (() => {
   try { saved = JSON.parse(localStorage.getItem(KEY) || "null"); } catch {}
   let s = saved || { coins: CFG.start_coins, items: [], last_free: 0,
             streak: 0, last_daily: "", minted: {}, next: 1, feed: [] };
+  s = { xp: 0, cases: 0, up_total: 0, up_won: 0, ...s };
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch {} };
   const now = () => Date.now() / 1000;
   function mint(gift, bg) {
@@ -287,6 +355,7 @@ const Local = (() => {
     s.items.push(it); return it;
   }
   const user = () => ({ coins: s.coins, refs: 0, streak: s.streak, daily_ready: s.last_daily !== today(),
+    xp: s.xp, cases: s.cases, up_total: s.up_total, up_won: s.up_won,
     free_in: Math.max(0, Math.floor(s.last_free + CFG.free_cooldown - now())),
     items: [...s.items].sort((a, b) => b.value - a.value || b.id - a.id) });
   const ok = (extra = {}) => { save(); return { ok: true, user: user(), ...extra }; };
@@ -301,6 +370,7 @@ const Local = (() => {
       const price = CFG.cases[c].price;
       if (!price) { if (now() - s.last_free < CFG.free_cooldown) return fail("Бесплатный кейс ещё перезаряжается"); s.last_free = now(); }
       else if (s.coins < price) return fail("Не хватает кристаллов"); else s.coins -= price;
+      s.cases++; s.xp += Math.max(5, Math.floor(price / 10));
       const { gift, bg } = rollCase(c); const item = mint(gift, bg);
       if (["epic","legendary"].includes(CFG.gifts[gift].tier) || ["gold","rainbow"].includes(bg))
         feed("drop", { gift, bg, serial: item.serial, case: c });
@@ -315,6 +385,7 @@ const Local = (() => {
       const input = rows.reduce((a, r) => a + r.value, 0), chance = chanceOf(input, giftValue(target, "plain"));
       if (!chance) return fail("Цель должна быть дороже, но шанс — не меньше 1%");
       const roll = rand(), win = roll < chance; drop(ids);
+      s.up_total++; if (win) s.up_won++; s.xp += Math.max(5, Math.floor(input / 20));
       const item = win ? mint(target, "plain") : null;
       if (win || input >= 500) feed("upgrade", { from: rows.slice(0, 3).map(r => r.gift), gift: target, win,
                                                  chance: Math.round(chance * 1000) / 10 });
@@ -359,19 +430,24 @@ const freeLeft = () => Math.max(0, Math.floor(U.free_in - (Date.now() / 1000 - l
 function giftHTML(it, extra = "", attrs = "") {
   const g = CFG.gifts[it.gift], tier = CFG.tiers[g.tier];
   const bg = it.bg && it.bg !== "plain" ? `bg-${it.bg}` : "";
-  return `<div class="gift ${bg} ${extra}" style="--tier:${tier.color}" ${attrs}>
+  return `<div class="gift ${bg} t-${g.tier} ${extra}" style="--tier:${tier.color}" ${attrs}>
     ${it.serial ? `<div class="s">#${it.serial}</div>` : ""}
-    <div class="e">${g.emoji}</div><div class="n">${g.name}</div>
+    ${art(it.gift)}<div class="n">${g.name}</div>
     <div class="v">${fmt(it.value ?? giftValue(it.gift, it.bg || "plain"))} 💎</div>${it.chanceHTML || ""}</div>`;
 }
+
+const art = (id, cls) => window.ART?.has(id) ? ART.gift(id, cls) : `<div class="e">${CFG.gifts[id]?.emoji || "🎁"}</div>`;
+const sfx = name => window.FX?.sfx[name]?.();
+const levelOf = xp => Math.floor(Math.sqrt((xp || 0) / 25)) + 1;
+const xpFor = lvl => 25 * (lvl - 1) ** 2;
 
 // ---------------------------------------------------------------- лента
 function renderFeed(list) {
   $("feed").innerHTML = (list || []).slice(0, 15).map(f => {
     const g = CFG.gifts[f.gift]; if (!g) return "";
-    if (f.kind === "drop") return `<div class="feed-item"><span class="e">${g.emoji}</span>
+    if (f.kind === "drop") return `<div class="feed-item"><span class="e">${art(f.gift)}</span>
       <div><b>${esc(f.name)}</b><div class="muted">выбил ${g.name} #${f.serial}</div></div></div>`;
-    return `<div class="feed-item ${f.win ? "win" : "lose"}"><span class="e">${(f.from || []).map(x => CFG.gifts[x]?.emoji || "").join("")}→${g.emoji}</span>
+    return `<div class="feed-item ${f.win ? "win" : "lose"}"><span class="e">${(f.from || []).slice(0, 2).map(x => art(x)).join("")}<i>→</i>${art(f.gift)}</span>
       <div><b>${esc(f.name)}</b><div class="muted">${f.win ? "✅" : "❌"} шанс ${f.chance}%</div></div></div>`;
   }).join("") || `<div class="feed-item muted">Здесь появятся крутые выпадения и апгрейды игроков</div>`;
 }
@@ -381,15 +457,15 @@ async function pollFeed() {
 setInterval(pollFeed, 6000);
 
 // ---------------------------------------------------------------- кейсы
-const CASE_ICON = { free: "🎀", basic: "📦", premium: "💼" };
+const CASE_GLOW = { free: "#22c55e", basic: "#3b82f6", premium: "#f59e0b" };
 function renderCases() {
   $("cases").innerHTML = Object.entries(CFG.cases).map(([k, c]) => {
     const isFree = c.price === 0, left = isFree ? freeLeft() : 0;
     const label = isFree ? (left ? `⏳ ${hms(left)}` : "Открыть") : `${fmt(c.price)} 💎`;
     const odds = Object.entries(c.odds).map(([t, p]) => `<span style="--c:${CFG.tiers[t].color}">${CFG.tiers[t].title} ${p}%</span>`).join("");
-    const tops = Object.keys(CFG.gifts).filter(g => c.odds[CFG.gifts[g].tier]).slice(-4).map(g => CFG.gifts[g].emoji).join(" ");
-    return `<div class="glass case"><div class="icon" style="background:${isFree ? "rgba(34,197,94,.12)" : k === "premium" ? "rgba(245,158,11,.14)" : "rgba(59,130,246,.12)"}">${CASE_ICON[k] || "📦"}</div>
-      <div style="flex:1;min-width:0"><b>${c.title}</b><div class="small muted">Внутри: ${tops} …</div><div class="odds">${odds}</div></div>
+    const tops = Object.keys(CFG.gifts).filter(g => c.odds[CFG.gifts[g].tier]).slice(-4).map(g => art(g, "art mini")).join("");
+    return `<div class="glass case"><div class="icon" style="background:${isFree ? "rgba(34,197,94,.12)" : k === "premium" ? "rgba(245,158,11,.14)" : "rgba(59,130,246,.12)"}">${window.ART ? ART.box(k) : "📦"}</div>
+      <div style="flex:1;min-width:0"><b>${c.title}</b><div class="small muted row" style="gap:2px">Внутри: ${tops}</div><div class="odds">${odds}</div></div>
       <button class="btn ${k === "premium" ? "gold" : isFree ? "green" : ""}" data-case="${k}" ${left || (!isFree && U.coins < c.price) ? "disabled" : ""}>${label}</button></div>`;
   }).join("");
 }
@@ -399,39 +475,56 @@ async function openCase(caseId) {
   if (spinning) return; spinning = true;
   let res;
   try { res = await api("case", { case: caseId }); } catch (e) { spinning = false; return toast("Ошибка сети"); }
-  if (!res.ok) { spinning = false; setUser(res); renderCases(); return toast(res.error); }
+  if (!res.ok) { spinning = false; setUser(res); renderCases(); sfx("lose"); return toast(res.error); }
   const item = res.item, WIN = 40, W = 108;
+  // 1) кейс трясётся и открывается
+  const stage = $("case-stage");
+  stage.className = "case-stage"; stage.style.setProperty("--glow", CASE_GLOW[caseId] || "#3b82f6");
+  stage.innerHTML = window.ART ? ART.box(caseId) : "";
+  $("strip-wrap").classList.add("hidden"); $("case-result").className = "result";
+  $("case-modal").classList.add("show");
+  requestAnimationFrame(() => stage.classList.add("shaking"));
+  sfx("shake"); haptic("medium");
+  await sleep(1100);
+  stage.classList.add("opened"); sfx("open"); haptic("heavy"); FX?.flash(CASE_GLOW[caseId] + "aa", 500);
+  await sleep(450);
+  stage.classList.add("gone");
+  // 2) рулетка
   const fillers = Array.from({ length: 48 }, (_, i) => i === WIN ? item : (() => { const r = rollCase(caseId); return { ...r, value: giftValue(r.gift, r.bg) }; })());
   $("strip").innerHTML = fillers.map(it => giftHTML(it)).join("");
   $("strip").style.transition = "none"; $("strip").style.transform = "translateX(0)";
-  $("case-result").className = "result"; $("case-modal").classList.add("show");
-  haptic("medium");
-  const wrapW = $("strip").parentElement.clientWidth;
+  $("strip-wrap").classList.remove("hidden");
+  const wrapW = $("strip-wrap").clientWidth;
   const offset = WIN * W - wrapW / 2 + 50 + (rand() * 70 - 35);
   requestAnimationFrame(() => requestAnimationFrame(() => {
     $("strip").style.transition = "transform 5s cubic-bezier(.08,.6,.12,1)";
     $("strip").style.transform = `translateX(${-offset}px)`;
   }));
   let lastTick = 0; const tickTimer = setInterval(() => {      // «щелчки» рулетки
-    const m = new DOMMatrix(getComputedStyle($("strip")).transform), idx = Math.floor(-m.m41 / W);
-    if (idx !== lastTick) { lastTick = idx; haptic("light"); }
-  }, 40);
-  setTimeout(() => {
-    clearInterval(tickTimer);
-    setUser(res); spinning = false;
-    const g = CFG.gifts[item.gift], bgName = CFG.backgrounds[item.bg].name;
-    $("case-result").innerHTML = `${giftHTML(item)}
-      <div style="font-weight:900;font-size:18px">${g.name} <span class="muted">#${item.serial}</span></div>
-      <div class="small" style="color:${CFG.tiers[g.tier].color};margin:4px 0 14px">${CFG.tiers[g.tier].title} · фон «${bgName}»</div>
-      <div class="row" style="justify-content:center">
-        <button class="btn green" data-sell-one="${item.id}">Продать ${fmt(item.value)} 💎</button>
-        <button class="btn gold" data-to-upgrade="${item.id}">В апгрейд</button>
-      </div><button class="btn ghost wide" style="margin-top:8px" data-close>Забрать</button>`;
-    $("case-result").className = "result show";
-    haptic(["epic", "legendary"].includes(g.tier) || item.bg !== "plain" ? "success" : "medium");
-    renderCases(); pollFeed();
-  }, 5200);
+    const m = new DOMMatrix(getComputedStyle($("strip")).transform), idx = Math.floor((-m.m41 + wrapW / 2) / W);
+    if (idx !== lastTick) { lastTick = idx; haptic("light"); sfx("tick"); }
+  }, 30);
+  await sleep(5200);
+  clearInterval(tickTimer);
+  // 3) результат
+  setUser(res); spinning = false;
+  const g = CFG.gifts[item.gift], tier = CFG.tiers[g.tier], bgName = CFG.backgrounds[item.bg].name;
+  const big = ["epic", "legendary"].includes(g.tier) || ["gold", "rainbow"].includes(item.bg);
+  $("strip-wrap").classList.add("hidden");
+  $("case-result").innerHTML = `<div class="rays-wrap" style="--ray:${tier.color}55">${big ? `<div class="rays"></div>` : ""}${giftHTML(item)}</div>
+    <div style="font-weight:900;font-size:20px">${g.name} <span class="muted">#${item.serial}</span></div>
+    <div class="tier-label" style="background:${tier.color}22;color:${tier.color};border:1px solid ${tier.color}66">${tier.title}${item.bg !== "plain" ? " · " + bgName : ""}</div>
+    <div class="row" style="justify-content:center">
+      <button class="btn green" data-sell-one="${item.id}">Продать ${fmt(item.value)} 💎</button>
+      <button class="btn gold" data-to-upgrade="${item.id}">В апгрейд</button>
+    </div><button class="btn ghost wide" style="margin-top:8px" data-close>Забрать</button>`;
+  $("case-result").className = "result show";
+  if (big) { sfx("epic"); haptic("success"); FX?.flash(tier.color, 700);
+             FX?.confetti([tier.color, "#fff", "#fde047", tier.color]); }
+  else { sfx("win"); haptic("medium"); }
+  renderHeader(); renderCases(); pollFeed();
 }
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 // ---------------------------------------------------------------- апгрейд
 const inputValue = () => [...upSel].reduce((a, id) => a + (itemById(id)?.value || 0), 0);
@@ -440,7 +533,7 @@ function renderUpgrade() {
   // слот «вход»
   const sel = [...upSel].map(itemById).filter(Boolean);
   $("slot-in").innerHTML = sel.length === 1 ? giftHTML(sel[0])
-    : sel.length ? `<div style="font-size:26px">${sel.slice(0, 6).map(i => CFG.gifts[i.gift].emoji).join("")}</div>
+    : sel.length ? `<div class="stack">${sel.slice(0, 6).map(i => art(i.gift)).join("")}</div>
                    <b style="margin-top:6px">${fmt(sum)} 💎</b><div class="muted">${sel.length} шт.</div>`
     : `<span class="muted">Выбери свои подарки ниже</span>`;
   // цель
@@ -479,27 +572,79 @@ function closestTarget(want) {
 const CIRC = 2 * Math.PI * 86;
 function setArc(ch) { $("arc").setAttribute("stroke-dasharray", `${ch * CIRC} ${CIRC}`); }
 let needleAngle = 0;
+function spinNeedle(target, chance) {
+  // своя анимация: быстрый разгон, долгое торможение, «качание» у самой границы
+  return new Promise(done => {
+    const from = needleAngle, dist = target - from, T = 4600, t0 = performance.now();
+    let lastSeg = Math.floor(from / 12), beatAt = 0;
+    const ease = x => 1 - Math.pow(1 - x, 4);
+    function frame(now) {
+      const x = Math.min(1, (now - t0) / T);
+      let a = from + dist * ease(x);
+      if (x > .82) a += Math.sin((x - .82) * 60) * 3.5 * (1 - x) / .18;   // дрожь перед остановкой
+      $("needle").style.transform = `rotate(${a}deg)`;
+      const seg = Math.floor(a / 12);
+      if (seg !== lastSeg) { lastSeg = seg; sfx("tick"); haptic("light"); }
+      if (x > .6 && now - beatAt > 520) { beatAt = now; sfx("heartbeat"); }
+      if (x < 1) requestAnimationFrame(frame); else { needleAngle = target; done(); }
+    }
+    requestAnimationFrame(frame);
+  });
+}
 async function doUpgrade() {
   if (spinning || !upTarget) return; spinning = true; renderUpgrade();
   let res;
   try { res = await api("upgrade", { ids: [...upSel], target: upTarget }); } catch { spinning = false; renderUpgrade(); return toast("Ошибка сети"); }
   if (!res.ok) { spinning = false; setUser(res); renderUpgrade(); return toast(res.error); }
-  needleAngle = Math.ceil(needleAngle / 360) * 360 + 5 * 360 + res.roll * 360;
-  $("needle").style.transform = `rotate(${needleAngle}deg)`;
+  const wheel = document.querySelector(".wheel"); wheel.classList.remove("won"); wheel.classList.add("spinning");
+  $("up-top").classList.remove("flash-win", "flash-lose", "lost");
   haptic("medium");
-  setTimeout(() => {
-    spinning = false;
-    $("up-top").classList.remove("flash-win", "flash-lose"); void $("up-top").offsetWidth;
-    $("up-top").classList.add(res.win ? "flash-win" : "flash-lose");
-    if (res.win) { toast(`✅ Успех! ${CFG.gifts[res.item.gift].name} #${res.item.serial} твой`); haptic("success"); }
-    else { toast("❌ Не повезло. Попробуй ещё!"); haptic("error"); }
-    upSel = new Set(); upTarget = null; upMult = null;
-    setUser(res); lastSpin = { chance: res.chance, win: res.win }; renderUpgrade(); pollFeed();
-  }, 4400);
+  await spinNeedle(Math.ceil(needleAngle / 360) * 360 + 5 * 360 + res.roll * 360, res.chance);
+  wheel.classList.remove("spinning"); void $("up-top").offsetWidth;
+  spinning = false;
+  if (res.win) {
+    wheel.classList.add("won"); $("up-top").classList.add("flash-win");
+    const g = CFG.gifts[res.item.gift];
+    toast(`✅ Успех! ${g.name} #${res.item.serial} твой`); haptic("success"); sfx("epic");
+    FX?.confetti([CFG.tiers[g.tier].color, "#22c55e", "#fff", "#fde047"], 140);
+  } else { $("up-top").classList.add("lost"); toast("❌ Не повезло. Попробуй ещё!"); haptic("error"); sfx("lose"); }
+  upSel = new Set(); upTarget = null; upMult = null;
+  setUser(res); lastSpin = { chance: res.chance, win: res.win }; renderUpgrade(); renderHeader(); pollFeed();
 }
 
 // ---------------------------------------------------------------- инвентарь
+function renderHeader() {
+  const lvl = levelOf(U.xp);
+  $("hdr-lvl").textContent = `LVL ${lvl}`;
+  const u = tg?.initDataUnsafe?.user;
+  const av = u?.photo_url ? `<img src="${esc(u.photo_url)}" style="width:100%;height:100%;object-fit:cover" alt="">`
+                          : esc((u?.first_name || "Я")[0]);
+  $("hdr-avatar").innerHTML = av;
+  return av;
+}
+function renderProfile() {
+  const u = tg?.initDataUnsafe?.user, av = renderHeader();
+  const lvl = levelOf(U.xp), from = xpFor(lvl), to = xpFor(lvl + 1);
+  const worth = U.items.reduce((a, i) => a + i.value, 0), best = U.items[0];
+  const counts = {}; U.items.forEach(i => { const t = CFG.gifts[i.gift].tier; counts[t] = (counts[t] || 0) + 1; });
+  const rate = U.up_total ? Math.round(U.up_won / U.up_total * 100) + "%" : "—";
+  $("profile").innerHTML = `<div class="top"><div class="avatar">${av}</div><div style="flex:1;min-width:0">
+      <div class="row"><b style="font-size:17px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(u ? (u.first_name + " " + (u.last_name || "")).trim() : "Игрок")}</b>
+      <span class="lvl">LVL ${lvl}</span></div>
+      <div class="xpbar"><i style="width:${Math.min(100, (U.xp - from) / (to - from) * 100)}%"></i></div>
+      <div class="small muted">${fmt(U.xp - from)} / ${fmt(to - from)} опыта до ${lvl + 1} уровня</div></div></div>
+    <div class="stats">
+      <div class="stat"><b>${fmt(worth)}</b><span>💎 коллекция</span></div>
+      <div class="stat"><b>${U.cases || 0}</b><span>кейсов</span></div>
+      <div class="stat"><b>${U.up_won || 0}/${U.up_total || 0}</b><span>апгрейдов · ${rate}</span></div>
+    </div>
+    ${best ? `<div class="best">${art(best.gift)}<div style="flex:1"><div class="small muted">Самый ценный подарок</div>
+      <b>${CFG.gifts[best.gift].name} #${best.serial}</b></div><b>${fmt(best.value)} 💎</b></div>` : ""}
+    <div class="tiers">${Object.entries(CFG.tiers).map(([t, x]) => `<div title="${x.title}" style="background:${counts[t] ? x.color : "rgba(255,255,255,.07)"};opacity:${counts[t] ? 1 : .6}"></div>`).join("")}</div>
+    <div class="small muted" style="margin-top:4px">Собрано редкостей: ${Object.keys(counts).length} из ${Object.keys(CFG.tiers).length}</div>`;
+}
 function renderInv() {
+  renderProfile();
   const total = U.items.reduce((a, i) => a + i.value, 0);
   $("inv-total").textContent = U.items.length ? `${U.items.length} шт. · ${fmt(total)} 💎` : "";
   $("inv").innerHTML = U.items.length ? U.items.map(it => giftHTML(it, invSel.has(it.id) ? "sel" : "", `data-inv="${it.id}"`)).join("")
@@ -511,7 +656,7 @@ function renderInv() {
 async function sell(ids) {
   const res = await api("sell", { ids }); setUser(res);
   if (!res.ok) return toast(res.error);
-  invSel.clear(); toast(`+${fmt(res.sold)} 💎`); haptic("success"); renderCurrent();
+  invSel.clear(); toast(`+${fmt(res.sold)} 💎`); haptic("success"); sfx("coin"); renderCurrent();
 }
 
 // ---------------------------------------------------------------- топ и бонусы
@@ -547,7 +692,10 @@ function go(tab) {
   if (tab !== "inv") $("sellbar").classList.remove("show");
   renderCurrent(); window.scrollTo(0, 0);
 }
-document.querySelectorAll("nav button").forEach(b => b.onclick = () => { go(b.dataset.tab); haptic("light"); });
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => { go(b.dataset.tab); haptic("light"); sfx("click"); });
+$("me-chip").onclick = () => go("inv");
+$("mute").onclick = () => { const m = FX?.toggleMute(); $("mute").textContent = m ? "🔇" : "🔊"; };
+if (window.FX?.muted) $("mute").textContent = "🔇";
 
 document.addEventListener("click", async e => {
   const t = e.target.closest("[data-case],[data-up],[data-target],[data-mult],[data-inv],[data-sell-one],[data-to-upgrade],[data-close],[data-shop]");
@@ -563,7 +711,7 @@ document.addEventListener("click", async e => {
     if (upSel.has(id)) upSel.delete(id);
     else if (upSel.size >= CFG.max_items) return toast(`Максимум ${CFG.max_items} подарков`);
     else upSel.add(id);
-    haptic("light"); return renderUpgrade();
+    haptic("light"); sfx("click"); return renderUpgrade();
   }
   if (d.target) { upTarget = d.target; upMult = null; haptic("light"); return renderUpgrade(); }
   if (d.mult) { if (!upSel.size) return toast("Сначала выбери свои подарки"); upMult = +d.mult; haptic("light"); return renderUpgrade(); }
@@ -582,7 +730,7 @@ $("sell-btn").onclick = () => sell([...invSel]);
 $("sel-all").onclick = () => { invSel = invSel.size === U.items.length ? new Set() : new Set(U.items.map(i => i.id)); renderInv(); };
 $("daily-btn").onclick = async () => {
   const res = await api("daily"); setUser(res);
-  if (res.reward) { toast(`+${fmt(res.reward)} 💎 — серия ${U.streak} дн.`); haptic("success"); }
+  if (res.reward) { toast(`+${fmt(res.reward)} 💎 — серия ${U.streak} дн.`); haptic("success"); sfx("win"); FX?.confetti(undefined, 70); }
   renderMore();
 };
 $("invite-btn").onclick = () => {
@@ -612,7 +760,7 @@ function hms(s) { const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60),
     if (res.config) CFG = res.config;
     botUsername = res.bot_username; uid = res.uid;
   } catch { online = false; res = await api("state"); }
-  setUser(res); renderFeed(res.feed); renderCases();
+  setUser(res); renderFeed(res.feed); renderCases(); renderHeader();
 })();
 </script>
 </body>

@@ -81,6 +81,12 @@ class DB:
                 charge_id TEXT PRIMARY KEY, user_id INTEGER, item TEXT, stars INTEGER, ts REAL
             );
         """)
+        # новые колонки для старых баз (профиль игрока)
+        for col in ("xp", "cases", "up_total", "up_won"):
+            try:
+                self.conn.execute(f"ALTER TABLE users ADD COLUMN {col} INTEGER NOT NULL DEFAULT 0")
+            except sqlite3.OperationalError:
+                pass  # колонка уже есть
         self.conn.commit()
         self.lock = asyncio.Lock()
 
@@ -229,6 +235,7 @@ def user_view(uid: int) -> dict:
     today = date.today().isoformat()
     return {
         "coins": u["coins"], "refs": u["refs"], "streak": u["streak"],
+        "xp": u["xp"], "cases": u["cases"], "up_total": u["up_total"], "up_won": u["up_won"],
         "daily_ready": u["last_daily"] != today,
         "free_in": max(0, int(u["last_free"] + game.FREE_CASE_COOLDOWN - time.time())),
         "items": db.items(uid),
@@ -270,6 +277,8 @@ async def api_case(request: web.Request) -> web.Response:
             return fail(u["id"], "Не хватает кристаллов")
         else:
             db.add_coins(u["id"], -price)
+        db.conn.execute("UPDATE users SET cases = cases + 1, xp = xp + ? WHERE id=?",
+                        (max(5, price // 10), u["id"]))
         gift, bg = game.roll_case(case)
         item = db.mint(u["id"], gift, bg)
         if game.GIFTS[gift][2] in ("epic", "legendary") or bg in ("gold", "rainbow"):
@@ -309,6 +318,8 @@ async def api_upgrade(request: web.Request) -> web.Response:
         if "error" in res:
             return fail(u["id"], res["error"])
         db.delete_items([r["id"] for r in rows])
+        db.conn.execute("UPDATE users SET up_total = up_total + 1, up_won = up_won + ?, xp = xp + ? WHERE id=?",
+                        (int(res["win"]), max(5, input_value // 20), u["id"]))
         item = db.mint(u["id"], target, "plain") if res["win"] else None
         if res["win"] or input_value >= 500:  # в ленту — победы и крупные проигрыши
             db.add_feed(name, "upgrade", {
@@ -360,6 +371,7 @@ def build_app(bot: Bot) -> web.Application:
     app = web.Application(middlewares=[cors])
     app["bot"] = bot
     app.router.add_get("/", index)
+    app.router.add_static("/assets", BASE_DIR / "assets")
     posts = {"state": api_state, "case": api_case, "sell": api_sell, "upgrade": api_upgrade,
              "daily": api_daily, "invoice": api_invoice}
     for name, handler in posts.items():
