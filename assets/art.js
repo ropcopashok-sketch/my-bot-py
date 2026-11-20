@@ -247,18 +247,38 @@
     premium: chest("dark", "gold", "gold"),
   };
 
+  // ------------------------------------------------------------------ узоры (одноцветные, цвет задаёт фон)
+  const PATTERNS = {
+    stars:    `<path d="M5 .5 6.3 3.6 9.7 3.9 7.1 6.1 7.9 9.5 5 7.7 2.1 9.5 2.9 6.1.3 3.9 3.7 3.6z"/>`,
+    hearts:   `<path d="M5 9.2C1.2 6.6 0 4.8.6 3 1.3 1 3.8.6 5 2.6 6.2.6 8.7 1 9.4 3 10 4.8 8.8 6.6 5 9.2z"/>`,
+    sparkles: `<path d="M5 0C5.6 3.4 6.6 4.4 10 5 6.6 5.6 5.6 6.6 5 10 4.4 6.6 3.4 5.6 0 5 3.4 4.4 4.4 3.4 5 0z"/>`,
+    bolts:    `<path d="M6.2 0 1.2 5.8H4.6L3.6 10 8.8 3.9H5.3z"/>`,
+    moons:    `<path d="M6.5.4A4.8 4.8 0 1 0 9.6 7.4 3.9 3.9 0 0 1 6.5.4z"/>`,
+    diamonds: `<path d="M2.4 1h5.2L10 3.8 5 9.6 0 3.8z"/>`,
+    crowns:   `<path d="M.5 2.6 2.8 5 5 1.2 7.2 5 9.5 2.6 8.6 8.3H1.4z"/>`,
+  };
+  // позиции узора: кольцо вокруг центра (x, y, размер, прозрачность)
+  const RING = [
+    [50, 7, 9, .55], [24, 13, 7, .45], [76, 13, 7, .45], [8, 32, 8, .5], [92, 32, 8, .5],
+    [6, 58, 6, .35], [94, 58, 6, .35], [16, 80, 8, .45], [84, 80, 8, .45], [36, 92, 6, .3], [64, 92, 6, .3],
+    [30, 30, 5, .28], [70, 30, 5, .28], [22, 50, 4.5, .22], [78, 50, 4.5, .22], [30, 72, 4.5, .22], [70, 72, 4.5, .22],
+  ];
+
   // ------------------------------------------------------------------ спрайт
   const sym = (id, inner) => `<symbol id="${id}" viewBox="0 0 100 100">${inner}</symbol>`;
   const sprite = `<svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">
     <defs>${defs}</defs>
     ${Object.entries(GIFTS).map(([k, v]) => sym("gift-" + k, v)).join("")}
     ${Object.entries(CASES).map(([k, v]) => sym(`case-${k}-body`, v.body) + sym(`case-${k}-lid`, v.lid)).join("")}
+    ${Object.entries(PATTERNS).map(([k, v]) => `<symbol id="pat-${k}" viewBox="0 0 10 10">${v}</symbol>`).join("")}
   </svg>`;
   document.body.insertAdjacentHTML("afterbegin", sprite);
 
   window.ART = {
     has: id => id in GIFTS,
     gift: (id, cls = "art") => `<svg class="${cls}" viewBox="0 0 100 100"><use href="#gift-${id}"/></svg>`,
+    pattern: (id, color) => `<svg class="pat" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice" style="color:${color}">${
+      RING.map(([x, y, r, o]) => `<use href="#pat-${PATTERNS[id] ? id : "stars"}" x="${x - r / 2}" y="${y - r / 2}" width="${r}" height="${r}" opacity="${o}" fill="currentColor"/>`).join("")}</svg>`,
     box: id => `<svg class="case-art" viewBox="0 0 100 100"><use href="#case-${id}-body"/><use class="lid" href="#case-${id}-lid"/></svg>`,
   };
 })();

@@ -87,6 +87,11 @@ class DB:
                 self.conn.execute(f"ALTER TABLE users ADD COLUMN {col} INTEGER NOT NULL DEFAULT 0")
             except sqlite3.OperationalError:
                 pass  # колонка уже есть
+        for col, default in (("model", "classic"), ("pattern", "stars")):
+            try:
+                self.conn.execute(f"ALTER TABLE items ADD COLUMN {col} TEXT NOT NULL DEFAULT '{default}'")
+            except sqlite3.OperationalError:
+                pass
         self.conn.commit()
         self.lock = asyncio.Lock()
 
@@ -102,19 +107,20 @@ class DB:
         self.conn.execute("UPDATE users SET coins = coins + ? WHERE id=?", (amount, uid))
 
     # предметы
-    def mint(self, owner: int, gift: str, bg: str) -> dict:
+    def mint(self, owner: int, gift: str, model: str, bg: str, pattern: str) -> dict:
         """Создаёт новый экземпляр подарка с порядковым номером."""
         self.conn.execute("INSERT INTO minted(gift, n) VALUES (?, 1) "
                           "ON CONFLICT(gift) DO UPDATE SET n = n + 1", (gift,))
         serial = self.conn.execute("SELECT n FROM minted WHERE gift=?", (gift,)).fetchone()[0]
-        value = game.item_value(gift, bg)
+        value = game.item_value(gift, model, bg, pattern)
         cur = self.conn.execute(
-            "INSERT INTO items(owner, gift, bg, serial, value, created) VALUES (?,?,?,?,?,?)",
-            (owner, gift, bg, serial, value, time.time()))
-        return {"id": cur.lastrowid, "gift": gift, "bg": bg, "serial": serial, "value": value}
+            "INSERT INTO items(owner, gift, model, bg, pattern, serial, value, created) VALUES (?,?,?,?,?,?,?,?)",
+            (owner, gift, model, bg, pattern, serial, value, time.time()))
+        return {"id": cur.lastrowid, "gift": gift, "model": model, "bg": bg, "pattern": pattern,
+                "serial": serial, "value": value}
 
     def items(self, owner: int) -> list[dict]:
-        rows = self.conn.execute("SELECT id, gift, bg, serial, value FROM items WHERE owner=? "
+        rows = self.conn.execute("SELECT id, gift, model, bg, pattern, serial, value FROM items WHERE owner=? "
                                  "ORDER BY value DESC, id DESC", (owner,)).fetchall()
         return [dict(r) for r in rows]
 
@@ -279,10 +285,9 @@ async def api_case(request: web.Request) -> web.Response:
             db.add_coins(u["id"], -price)
         db.conn.execute("UPDATE users SET cases = cases + 1, xp = xp + ? WHERE id=?",
                         (max(5, price // 10), u["id"]))
-        gift, bg = game.roll_case(case)
-        item = db.mint(u["id"], gift, bg)
-        if game.GIFTS[gift][2] in ("epic", "legendary") or bg in ("gold", "rainbow"):
-            db.add_feed(name, "drop", {"gift": gift, "bg": bg, "serial": item["serial"], "case": case})
+        item = db.mint(u["id"], **game.roll_case(case))
+        if game.is_rare_drop(item):
+            db.add_feed(name, "drop", {k: item[k] for k in ("gift", "model", "bg", "pattern", "serial")} | {"case": case})
         db.conn.commit()
     return ok(u["id"], item=item)
 
@@ -320,7 +325,7 @@ async def api_upgrade(request: web.Request) -> web.Response:
         db.delete_items([r["id"] for r in rows])
         db.conn.execute("UPDATE users SET up_total = up_total + 1, up_won = up_won + ?, xp = xp + ? WHERE id=?",
                         (int(res["win"]), max(5, input_value // 20), u["id"]))
-        item = db.mint(u["id"], target, "plain") if res["win"] else None
+        item = db.mint(u["id"], target, **game.roll_looks(only_base=True)) if res["win"] else None
         if res["win"] or input_value >= 500:  # в ленту — победы и крупные проигрыши
             db.add_feed(name, "upgrade", {
                 "from": [r["gift"] for r in rows][:3], "gift": target, "win": res["win"],

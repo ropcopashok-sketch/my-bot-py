@@ -58,7 +58,7 @@
         animation:shine 3.2s ease-in-out infinite; z-index:2; pointer-events:none; }
   .gift.t-epic::before { animation-delay:1.2s; animation-duration:4.5s; }
   @keyframes shine { 0%,60% { left:-60%; } 100% { left:130%; } }
-  .bg-gold::after { content:""; position:absolute; inset:0; pointer-events:none; opacity:.9;
+  .bd-onyx::after, .bd-aurora::after { content:""; position:absolute; inset:0; pointer-events:none; opacity:.9;
         background-image:radial-gradient(circle,#fff 0 1px,transparent 1.5px),radial-gradient(circle,#fde68a 0 1px,transparent 1.5px);
         background-size:23px 23px,31px 31px; background-position:3px 5px,11px 17px; animation:twinkle 2s ease-in-out infinite alternate; }
   @keyframes twinkle { from { opacity:.25; } to { opacity:.95; } }
@@ -67,10 +67,30 @@
   .gift .s { position:absolute; left:6px; top:5px; font-size:9px; color:#d1d5db; font-weight:800; z-index:1; }
   .gift.sel { outline:2px solid var(--blue); box-shadow:0 0 20px rgba(59,130,246,.5); }
   .gift.sel::after { content:"✓"; position:absolute; right:6px; top:4px; font-size:12px; font-weight:900; color:#60a5fa; }
-  .bg-neon    { background:radial-gradient(circle at 50% 35%, rgba(34,211,238,.45), rgba(59,130,246,.06) 70%); }
-  .bg-gold    { background:radial-gradient(circle at 50% 35%, rgba(251,191,36,.6), rgba(146,64,14,.25) 75%); }
-  .bg-rainbow { background:conic-gradient(from 0deg, #ef444488, #f59e0b88, #eab30888, #22c55e88, #06b6d488, #6366f188, #d946ef88, #ef444488);
-                animation:hue 4s linear infinite; }
+  /* карточка в стиле уникального подарка */
+  .gift { background:radial-gradient(circle at 50% 40%, var(--c1,#2a2a35) 0%, var(--c2,#0b0b0f) 80%); border-bottom-width:2px;
+          text-shadow:0 1px 4px rgba(0,0,0,.6); }
+  .gift .pat { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+  .gift [class^="m-"] { position:relative; z-index:1; }
+  .gift .art { animation:bob 3.2s ease-in-out infinite; animation-delay:var(--d,0s); }
+  @keyframes bob { 50% { transform:translateY(-4px) rotate(-1.5deg); } }
+  .m-neon    { filter:saturate(1.9) brightness(1.12) drop-shadow(0 0 6px #67e8f9); }
+  .m-ice     { filter:grayscale(1) sepia(1) hue-rotate(160deg) saturate(2.4) brightness(1.3) drop-shadow(0 0 6px #bae6fd); }
+  .m-shadow  { filter:grayscale(1) brightness(.6) contrast(1.5) drop-shadow(0 0 7px #c084fc); }
+  .m-gold    { filter:sepia(1) saturate(4) hue-rotate(-12deg) brightness(1.08) drop-shadow(0 0 7px #fbbf24); }
+  .m-rainbow { animation:hue 3s linear infinite; filter:saturate(1.7) drop-shadow(0 0 7px #f0abfc); }
+  @property --a { syntax:"<angle>"; initial-value:0deg; inherits:false; }
+  .bd-aurora { background:radial-gradient(circle at 50% 40%, rgba(255,106,213,.75), transparent 62%),
+               conic-gradient(from var(--a), #7c3aed, #22d3ee, #34d399, #ff6ad5, #7c3aed); animation:aurora 6s linear infinite; }
+  @keyframes aurora { to { --a:360deg; } }
+  .gift.big { width:230px; margin:0 auto; border-radius:26px; padding:16px 10px 12px; }
+  .gift.big .art { width:150px; height:150px; } .gift.big .n { font-size:15px; } .gift.big .v { font-size:13px; }
+  .attrs { margin:10px auto 14px; max-width:320px; border-radius:16px; overflow:hidden; border:1px solid var(--line); text-align:left; }
+  .attrs div { display:grid; grid-template-columns:80px 1fr auto; gap:8px; padding:9px 12px; font-size:13px; background:rgba(255,255,255,.03); }
+  .attrs div + div { border-top:1px solid var(--line); }
+  .attrs span { color:var(--muted); } .attrs i { font-style:normal; font-weight:800; padding:1px 8px; border-radius:99px;
+                background:rgba(59,130,246,.18); color:#93c5fd; font-size:11px; }
+  .attrs i.rare { background:rgba(245,158,11,.2); color:#fcd34d; }
   @keyframes hue { to { filter:hue-rotate(360deg); } }
   .grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
 
@@ -232,7 +252,9 @@
 <!-- ============ ИНВЕНТАРЬ ============ -->
 <section class="tab" id="tab-inv">
   <div class="glass card profile" id="profile"></div>
-  <h3>Инвентарь <span class="small muted" id="inv-total" style="letter-spacing:0"></span></h3>
+  <div class="row between"><h3>Инвентарь</h3>
+    <button class="btn ghost" id="sel-mode" style="padding:8px 12px">Выбрать</button></div>
+  <div class="small muted" id="inv-total" style="margin:-6px 4px 10px"></div>
   <div class="grid" id="inv"></div>
   <div class="glass sellbar" id="sellbar">
     <button class="btn ghost" id="sel-all">Все</button>
@@ -265,6 +287,9 @@
   <p class="small muted center">Оплата через Telegram Stars ⭐. Кристаллы используются только внутри игры.</p>
 </section>
 
+<!-- окно подарка -->
+<div class="modal" id="item-modal"><div class="result show" id="item-detail"></div></div>
+
 <!-- рулетка кейса -->
 <div class="modal" id="case-modal">
   <div class="case-stage" id="case-stage"></div>
@@ -295,43 +320,32 @@ const fmt = n => Math.floor(n).toLocaleString("ru-RU");
 const rand = () => crypto.getRandomValues(new Uint32Array(1))[0] / 2 ** 32;
 
 // ---------------------------------------------------------------- конфиг (копия game.py для офлайн-демо)
-let CFG = (() => {
-  const G = [["bear","Мишка","🧸","common",10],["rose","Роза","🌹","common",15],["candy","Леденец","🍭","common",20],
-    ["balloon","Шарик","🎈","common",25],["clover","Клевер","🍀","common",30],["bouquet","Букет","💐","uncommon",60],
-    ["cake","Торт","🎂","uncommon",80],["potion","Зелье","🧪","uncommon",100],["box","Сюрприз","🎁","uncommon",120],
-    ["ring","Кольцо","💍","rare",250],["orb","Шар судьбы","🔮","rare",350],["guitar","Гитара","🎸","rare",450],
-    ["crown","Корона","👑","epic",1000],["unicorn","Единорог","🦄","epic",1600],["dragon","Дракон","🐉","epic",2500],
-    ["rocket","Ракета","🚀","legendary",6000],["galaxy","Галактика","🌌","legendary",12000],["trophy","Кубок чемпиона","🏆","legendary",25000]];
-  return {
-    tiers: { common:{title:"Обычный",color:"#9ca3af"}, uncommon:{title:"Необычный",color:"#22c55e"}, rare:{title:"Редкий",color:"#3b82f6"},
-             epic:{title:"Эпический",color:"#a855f7"}, legendary:{title:"Легендарный",color:"#f59e0b"} },
-    gifts: Object.fromEntries(G.map(([k,name,emoji,tier,value]) => [k,{name,emoji,tier,value}])),
-    backgrounds: { plain:{name:"Обычный",mult:1,pct:75}, neon:{name:"Неон",mult:1.3,pct:18}, gold:{name:"Золото",mult:2,pct:6},
-                   rainbow:{name:"Радуга",mult:5,pct:1} },
-    cases: { free:{title:"Бесплатный",price:0,odds:{common:80,uncommon:17,rare:3}},
-             basic:{title:"Базовый",price:150,odds:{common:60,uncommon:30,rare:8.5,epic:1.4,legendary:.1}},
-             premium:{title:"Премиум",price:1200,odds:{uncommon:40,rare:40,epic:17,legendary:3}} },
-    free_cooldown: 4*3600, edge:.08, max_chance:.75, min_chance:.01, max_items:6,
-    daily:[100,150,250,400,600,900,1500], start_coins:300, ref_inviter:500, ref_invitee:250,
-    shop: { pack_s:{title:"1 000 кристаллов",coins:1000,stars:15}, pack_m:{title:"4 000 кристаллов",coins:4000,stars:50},
-            pack_l:{title:"15 000 кристаллов",coins:15000,stars:150} },
-  };
-})();
+// Генерируется из game.py командой `python game.py` — руками не править
+let CFG = /*CFG-START*/{"tiers": {"common": {"title": "Обычный", "color": "#9ca3af"}, "uncommon": {"title": "Необычный", "color": "#22c55e"}, "rare": {"title": "Редкий", "color": "#3b82f6"}, "epic": {"title": "Эпический", "color": "#a855f7"}, "legendary": {"title": "Легендарный", "color": "#f59e0b"}}, "gifts": {"bear": {"name": "Мишка", "emoji": "🧸", "tier": "common", "value": 10}, "rose": {"name": "Роза", "emoji": "🌹", "tier": "common", "value": 15}, "candy": {"name": "Леденец", "emoji": "🍭", "tier": "common", "value": 20}, "balloon": {"name": "Шарик", "emoji": "🎈", "tier": "common", "value": 25}, "clover": {"name": "Клевер", "emoji": "🍀", "tier": "common", "value": 30}, "bouquet": {"name": "Букет", "emoji": "💐", "tier": "uncommon", "value": 60}, "cake": {"name": "Торт", "emoji": "🎂", "tier": "uncommon", "value": 80}, "potion": {"name": "Зелье", "emoji": "🧪", "tier": "uncommon", "value": 100}, "box": {"name": "Сюрприз", "emoji": "🎁", "tier": "uncommon", "value": 120}, "ring": {"name": "Кольцо", "emoji": "💍", "tier": "rare", "value": 250}, "orb": {"name": "Шар судьбы", "emoji": "🔮", "tier": "rare", "value": 350}, "guitar": {"name": "Гитара", "emoji": "🎸", "tier": "rare", "value": 450}, "crown": {"name": "Корона", "emoji": "👑", "tier": "epic", "value": 1000}, "unicorn": {"name": "Единорог", "emoji": "🦄", "tier": "epic", "value": 1600}, "dragon": {"name": "Дракон", "emoji": "🐉", "tier": "epic", "value": 2500}, "rocket": {"name": "Ракета", "emoji": "🚀", "tier": "legendary", "value": 6000}, "galaxy": {"name": "Галактика", "emoji": "🌌", "tier": "legendary", "value": 12000}, "trophy": {"name": "Кубок чемпиона", "emoji": "🏆", "tier": "legendary", "value": 25000}}, "models": {"classic": {"name": "Классика", "mult": 1.0, "pct": 70}, "neon": {"name": "Неон", "mult": 1.3, "pct": 15}, "ice": {"name": "Лёд", "mult": 1.6, "pct": 8}, "shadow": {"name": "Тень", "mult": 2.0, "pct": 4.5}, "gold": {"name": "Золото", "mult": 3.0, "pct": 2}, "rainbow": {"name": "Радуга", "mult": 5.0, "pct": 0.5}}, "backdrops": {"midnight": {"name": "Полночь", "mult": 1.0, "pct": 30, "c1": "#3b4a8c", "c2": "#141a3a", "pc": "#8ea2ff"}, "sapphire": {"name": "Сапфир", "mult": 1.0, "pct": 20, "c1": "#2f7fd8", "c2": "#0d2a5c", "pc": "#9fd0ff"}, "emerald": {"name": "Изумруд", "mult": 1.0, "pct": 15, "c1": "#2fae7a", "c2": "#0b3d2c", "pc": "#9cf2c9"}, "ruby": {"name": "Рубин", "mult": 1.1, "pct": 12, "c1": "#d8475e", "c2": "#4a0f1d", "pc": "#ffb0bd"}, "amethyst": {"name": "Аметист", "mult": 1.1, "pct": 10, "c1": "#9b5de5", "c2": "#2e1452", "pc": "#e0c3ff"}, "amber": {"name": "Янтарь", "mult": 1.2, "pct": 7, "c1": "#e8a33a", "c2": "#5a2f05", "pc": "#ffe0a3"}, "mint": {"name": "Мята", "mult": 1.3, "pct": 4, "c1": "#5fe0c8", "c2": "#0f4a46", "pc": "#d2fff6"}, "onyx": {"name": "Оникс", "mult": 1.6, "pct": 1.5, "c1": "#4a4a52", "c2": "#08080a", "pc": "#c9c9d6"}, "aurora": {"name": "Аврора", "mult": 2.5, "pct": 0.5, "c1": "#ff6ad5", "c2": "#2a0b5c", "pc": "#ffffff"}}, "patterns": {"stars": {"name": "Звёзды", "mult": 1.0, "pct": 30}, "hearts": {"name": "Сердца", "mult": 1.0, "pct": 25}, "sparkles": {"name": "Искры", "mult": 1.0, "pct": 20}, "bolts": {"name": "Молнии", "mult": 1.05, "pct": 12}, "moons": {"name": "Луны", "mult": 1.1, "pct": 8}, "diamonds": {"name": "Бриллианты", "mult": 1.2, "pct": 4}, "crowns": {"name": "Короны", "mult": 1.5, "pct": 1}}, "cases": {"free": {"title": "Бесплатный", "price": 0, "odds": {"common": 80, "uncommon": 17, "rare": 3}}, "basic": {"title": "Базовый", "price": 170, "odds": {"common": 60, "uncommon": 30, "rare": 8.5, "epic": 1.4, "legendary": 0.1}}, "premium": {"title": "Премиум", "price": 1400, "odds": {"uncommon": 40, "rare": 40, "epic": 17, "legendary": 3}}}, "free_cooldown": 14400, "edge": 0.08, "max_chance": 0.75, "min_chance": 0.01, "max_items": 6, "daily": [100, 150, 250, 400, 600, 900, 1500], "start_coins": 300, "ref_inviter": 500, "ref_invitee": 250, "shop": {"pack_s": {"title": "1 000 кристаллов", "coins": 1000, "stars": 15}, "pack_m": {"title": "4 000 кристаллов", "coins": 4000, "stars": 50}, "pack_l": {"title": "15 000 кристаллов", "coins": 15000, "stars": 150}}}/*CFG-END*/;
 
 // ---------------------------------------------------------------- общие функции игры
-const giftValue = (gift, bg) => Math.round(CFG.gifts[gift].value * CFG.backgrounds[bg].mult);
+const baseValue = gift => CFG.gifts[gift].value;
+const look = (table, key, def) => CFG[table][key] || CFG[table][def];
+const itemValue = it => Math.round(baseValue(it.gift) * look("models", it.model, "classic").mult
+  * look("backdrops", it.bg, "midnight").mult * look("patterns", it.pattern, "stars").mult);
 function pick(weights) {           // {key: вес} -> key
   const total = Object.values(weights).reduce((a, b) => a + b, 0);
   let r = rand() * total;
   for (const [k, w] of Object.entries(weights)) { if ((r -= w) < 0) return k; }
   return Object.keys(weights)[0];
 }
+function rollLooks(onlyBase = false) {
+  const w = (t) => Object.fromEntries(Object.entries(CFG[t]).filter(([, v]) => !onlyBase || v.mult === 1).map(([k, v]) => [k, v.pct]));
+  return { model: onlyBase ? "classic" : pick(w("models")), bg: pick(w("backdrops")), pattern: pick(w("patterns")) };
+}
 function rollCase(caseId) {
   const tier = pick(CFG.cases[caseId].odds);
   const pool = Object.keys(CFG.gifts).filter(g => CFG.gifts[g].tier === tier);
-  const bg = pick(Object.fromEntries(Object.entries(CFG.backgrounds).map(([k, b]) => [k, b.pct])));
-  return { gift: pool[Math.floor(rand() * pool.length)], bg };
+  const it = { gift: pool[Math.floor(rand() * pool.length)], ...rollLooks() };
+  return { ...it, value: itemValue(it) };
 }
+const isRareDrop = it => ["epic", "legendary"].includes(CFG.gifts[it.gift].tier) || look("models", it.model, "classic").pct <= 2
+  || look("backdrops", it.bg, "midnight").pct <= 1.5 || look("patterns", it.pattern, "stars").pct <= 1;
 function chanceOf(inputValue, targetValue) {
   if (targetValue <= inputValue || inputValue <= 0) return 0;
   const c = inputValue / targetValue * (1 - CFG.edge);
@@ -349,9 +363,10 @@ const Local = (() => {
   s = { xp: 0, cases: 0, up_total: 0, up_won: 0, ...s };
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch {} };
   const now = () => Date.now() / 1000;
-  function mint(gift, bg) {
+  function mint({ gift, model, bg, pattern }) {
     s.minted[gift] = (s.minted[gift] || 0) + 1;
-    const it = { id: s.next++, gift, bg, serial: s.minted[gift], value: giftValue(gift, bg) };
+    const it = { id: s.next++, gift, model, bg, pattern, serial: s.minted[gift] };
+    it.value = itemValue(it);
     s.items.push(it); return it;
   }
   const user = () => ({ coins: s.coins, refs: 0, streak: s.streak, daily_ready: s.last_daily !== today(),
@@ -371,9 +386,8 @@ const Local = (() => {
       if (!price) { if (now() - s.last_free < CFG.free_cooldown) return fail("Бесплатный кейс ещё перезаряжается"); s.last_free = now(); }
       else if (s.coins < price) return fail("Не хватает кристаллов"); else s.coins -= price;
       s.cases++; s.xp += Math.max(5, Math.floor(price / 10));
-      const { gift, bg } = rollCase(c); const item = mint(gift, bg);
-      if (["epic","legendary"].includes(CFG.gifts[gift].tier) || ["gold","rainbow"].includes(bg))
-        feed("drop", { gift, bg, serial: item.serial, case: c });
+      const item = mint(rollCase(c));
+      if (isRareDrop(item)) feed("drop", { gift: item.gift, model: item.model, bg: item.bg, pattern: item.pattern, serial: item.serial, case: c });
       return ok({ item });
     },
     sell({ ids }) {
@@ -382,11 +396,11 @@ const Local = (() => {
     },
     upgrade({ ids, target }) {
       const rows = own(ids); if (!rows) return fail("Выбери свои подарки");
-      const input = rows.reduce((a, r) => a + r.value, 0), chance = chanceOf(input, giftValue(target, "plain"));
+      const input = rows.reduce((a, r) => a + r.value, 0), chance = chanceOf(input, baseValue(target));
       if (!chance) return fail("Цель должна быть дороже, но шанс — не меньше 1%");
       const roll = rand(), win = roll < chance; drop(ids);
       s.up_total++; if (win) s.up_won++; s.xp += Math.max(5, Math.floor(input / 20));
-      const item = win ? mint(target, "plain") : null;
+      const item = win ? mint({ gift: target, ...rollLooks(true) }) : null;
       if (win || input >= 500) feed("upgrade", { from: rows.slice(0, 3).map(r => r.gift), gift: target, win,
                                                  chance: Math.round(chance * 1000) / 10 });
       return ok({ win, roll, chance, item });
@@ -428,13 +442,41 @@ const freeLeft = () => Math.max(0, Math.floor(U.free_in - (Date.now() / 1000 - l
 
 // ---------------------------------------------------------------- отрисовка подарка
 function giftHTML(it, extra = "", attrs = "") {
+  // карточка в стиле «уникального подарка»: сияющий фон + узор кольцом + подарок с моделью
   const g = CFG.gifts[it.gift], tier = CFG.tiers[g.tier];
-  const bg = it.bg && it.bg !== "plain" ? `bg-${it.bg}` : "";
-  return `<div class="gift ${bg} t-${g.tier} ${extra}" style="--tier:${tier.color}" ${attrs}>
+  const bd = look("backdrops", it.bg, "midnight"), model = it.model || "classic";
+  const style = `--tier:${tier.color};--c1:${bd.c1};--c2:${bd.c2};--d:${-((it.serial || it.gift.length) % 7) * .43}s`;
+  return `<div class="gift t-${g.tier} bd-${it.bg} ${extra}" style="${style}" ${attrs}>
+    ${window.ART && it.pattern ? ART.pattern(it.pattern, bd.pc) : ""}
     ${it.serial ? `<div class="s">#${it.serial}</div>` : ""}
-    ${art(it.gift)}<div class="n">${g.name}</div>
-    <div class="v">${fmt(it.value ?? giftValue(it.gift, it.bg || "plain"))} 💎</div>${it.chanceHTML || ""}</div>`;
+    <div class="m-${model}">${art(it.gift)}</div><div class="n">${g.name}</div>
+    <div class="v">${fmt(it.value ?? itemValue(it))} 💎</div>${it.chanceHTML || ""}</div>`;
 }
+function attrsHTML(it) {
+  const row = (label, t, key, def) => { const x = look(t, key, def);
+    return `<div><span>${label}</span><b>${x.name}</b><i class="${x.pct <= 2 ? "rare" : ""}">${x.pct}%</i></div>`; };
+  const g = CFG.gifts[it.gift];
+  return `<div class="attrs">${row("Модель", "models", it.model, "classic")}${row("Фон", "backdrops", it.bg, "midnight")}
+    ${row("Узор", "patterns", it.pattern, "stars")}
+    <div><span>Ценность</span><b>${fmt(it.value)} 💎</b><i>x${(it.value / g.value).toFixed(2)}</i></div></div>`;
+}
+function openDetail(id) {
+  const it = itemById(id); if (!it) return;
+  const g = CFG.gifts[it.gift], tier = CFG.tiers[g.tier];
+  $("item-detail").innerHTML = `<div class="rays-wrap" style="--ray:${tier.color}55">${isRareDrop(it) ? `<div class="rays"></div>` : ""}
+      ${giftHTML(it, "big")}</div>
+    <div style="font-weight:900;font-size:20px;margin-top:10px">${g.name} <span class="muted">#${it.serial}</span></div>
+    <div class="tier-label" style="background:${tier.color}22;color:${tier.color};border:1px solid ${tier.color}66;margin-bottom:0">${tier.title}</div>
+    ${attrsHTML(it)}
+    <div class="row" style="justify-content:center">
+      <button class="btn green" data-sell-one="${it.id}">Продать ${fmt(it.value)} 💎</button>
+      <button class="btn gold" data-to-upgrade="${it.id}">В апгрейд</button>
+    </div><button class="btn ghost wide" style="margin-top:8px" data-close>Закрыть</button>`;
+  $("item-modal").classList.add("show"); sfx("click"); haptic("light");
+}
+// подарок-цель в апгрейде (без случайных частей)
+const targetHTML = (gift, extra = "", attrs = "", chanceHTML = "") =>
+  giftHTML({ gift, model: "classic", bg: "midnight", value: baseValue(gift), chanceHTML }, extra, attrs);
 
 const art = (id, cls) => window.ART?.has(id) ? ART.gift(id, cls) : `<div class="e">${CFG.gifts[id]?.emoji || "🎁"}</div>`;
 const sfx = name => window.FX?.sfx[name]?.();
@@ -490,7 +532,7 @@ async function openCase(caseId) {
   await sleep(450);
   stage.classList.add("gone");
   // 2) рулетка
-  const fillers = Array.from({ length: 48 }, (_, i) => i === WIN ? item : (() => { const r = rollCase(caseId); return { ...r, value: giftValue(r.gift, r.bg) }; })());
+  const fillers = Array.from({ length: 48 }, (_, i) => i === WIN ? item : (() => { const r = rollCase(caseId); return r; })());
   $("strip").innerHTML = fillers.map(it => giftHTML(it)).join("");
   $("strip").style.transition = "none"; $("strip").style.transform = "translateX(0)";
   $("strip-wrap").classList.remove("hidden");
@@ -508,12 +550,13 @@ async function openCase(caseId) {
   clearInterval(tickTimer);
   // 3) результат
   setUser(res); spinning = false;
-  const g = CFG.gifts[item.gift], tier = CFG.tiers[g.tier], bgName = CFG.backgrounds[item.bg].name;
-  const big = ["epic", "legendary"].includes(g.tier) || ["gold", "rainbow"].includes(item.bg);
+  const g = CFG.gifts[item.gift], tier = CFG.tiers[g.tier];
+  const big = isRareDrop(item);
   $("strip-wrap").classList.add("hidden");
   $("case-result").innerHTML = `<div class="rays-wrap" style="--ray:${tier.color}55">${big ? `<div class="rays"></div>` : ""}${giftHTML(item)}</div>
     <div style="font-weight:900;font-size:20px">${g.name} <span class="muted">#${item.serial}</span></div>
-    <div class="tier-label" style="background:${tier.color}22;color:${tier.color};border:1px solid ${tier.color}66">${tier.title}${item.bg !== "plain" ? " · " + bgName : ""}</div>
+    <div class="tier-label" style="background:${tier.color}22;color:${tier.color};border:1px solid ${tier.color}66">${tier.title}</div>
+    ${attrsHTML(item)}
     <div class="row" style="justify-content:center">
       <button class="btn green" data-sell-one="${item.id}">Продать ${fmt(item.value)} 💎</button>
       <button class="btn gold" data-to-upgrade="${item.id}">В апгрейд</button>
@@ -538,9 +581,9 @@ function renderUpgrade() {
     : `<span class="muted">Выбери свои подарки ниже</span>`;
   // цель
   if (upMult && sum) upTarget = closestTarget(sum * upMult);
-  const tv = upTarget ? giftValue(upTarget, "plain") : 0, chance = upTarget ? chanceOf(sum, tv) : 0;
+  const tv = upTarget ? baseValue(upTarget) : 0, chance = upTarget ? chanceOf(sum, tv) : 0;
   if (upTarget && !chance) upTarget = null;
-  $("slot-out").innerHTML = upTarget ? giftHTML({ gift: upTarget, bg: "plain" }) : `<span class="muted">Выбери цель</span>`;
+  $("slot-out").innerHTML = upTarget ? targetHTML(upTarget) : `<span class="muted">Выбери цель</span>`;
   if (upTarget || upSel.size) lastSpin = null;
   setArc(upTarget ? chance : lastSpin ? lastSpin.chance : 0);
   $("pct").textContent = upTarget ? (chance * 100).toFixed(chance < .1 ? 1 : 0) + "%"
@@ -551,11 +594,10 @@ function renderUpgrade() {
   // мультипликаторы
   $("chips").innerHTML = [1.5, 2, 5, 10, 20].map(m => `<button data-mult="${m}" class="${upMult === m ? "on" : ""}">x${m}</button>`).join("");
   // цели
-  const targets = Object.keys(CFG.gifts).filter(g => chanceOf(sum, giftValue(g, "plain")) > 0);
+  const targets = Object.keys(CFG.gifts).filter(g => chanceOf(sum, baseValue(g)) > 0);
   $("targets").innerHTML = !sum ? `<div class="empty" style="grid-column:1/-1">Сначала выбери подарки</div>`
-    : targets.map(g => { const c = chanceOf(sum, giftValue(g, "plain"));
-        return giftHTML({ gift: g, bg: "plain", chanceHTML: `<div class="c">${(c * 100).toFixed(c < .1 ? 1 : 0)}%</div>` },
-                        upTarget === g ? "sel" : "", `data-target="${g}"`); }).join("")
+    : targets.map(g => { const c = chanceOf(sum, baseValue(g));
+        return targetHTML(g, upTarget === g ? "sel" : "", `data-target="${g}"`, `<div class="c">${(c * 100).toFixed(c < .1 ? 1 : 0)}%</div>`); }).join("")
       || `<div class="empty" style="grid-column:1/-1">Дороже уже нечего 🏆</div>`;
   // инвентарь
   $("up-inv").innerHTML = U.items.length ? U.items.map(it => giftHTML(it, upSel.has(it.id) ? "sel" : "", `data-up="${it.id}"`)).join("")
@@ -564,7 +606,7 @@ function renderUpgrade() {
 function closestTarget(want) {
   let best = null, bd = Infinity;
   for (const g of Object.keys(CFG.gifts)) {
-    const v = giftValue(g, "plain"); if (!chanceOf(inputValue(), v)) continue;
+    const v = baseValue(g); if (!chanceOf(inputValue(), v)) continue;
     const d = Math.abs(Math.log(v / want)); if (d < bd) { bd = d; best = g; }
   }
   return best;
@@ -650,13 +692,13 @@ function renderInv() {
   $("inv").innerHTML = U.items.length ? U.items.map(it => giftHTML(it, invSel.has(it.id) ? "sel" : "", `data-inv="${it.id}"`)).join("")
     : `<div class="empty" style="grid-column:1/-1">Пусто — открой кейс 📦</div>`;
   const selSum = [...invSel].reduce((a, id) => a + (itemById(id)?.value || 0), 0);
-  $("sellbar").classList.toggle("show", invSel.size > 0);
+  $("sellbar").classList.toggle("show", selectMode && invSel.size > 0);
   $("sell-btn").textContent = `Продать ${invSel.size} шт. за ${fmt(selSum)} 💎`;
 }
 async function sell(ids) {
   const res = await api("sell", { ids }); setUser(res);
   if (!res.ok) return toast(res.error);
-  invSel.clear(); toast(`+${fmt(res.sold)} 💎`); haptic("success"); sfx("coin"); renderCurrent();
+  invSel.clear(); selectMode = false; $("sel-mode").textContent = "Выбрать"; toast(`+${fmt(res.sold)} 💎`); haptic("success"); sfx("coin"); renderCurrent();
 }
 
 // ---------------------------------------------------------------- топ и бонусы
@@ -702,9 +744,10 @@ document.addEventListener("click", async e => {
   if (!t) return;
   const d = t.dataset;
   if (d.case) return openCase(d.case);
-  if (d.close !== undefined) { $("case-modal").classList.remove("show"); return renderCurrent(); }
-  if (d.sellOne) { $("case-modal").classList.remove("show"); return sell([+d.sellOne]); }
-  if (d.toUpgrade) { $("case-modal").classList.remove("show"); upSel = new Set([+d.toUpgrade]); upTarget = null; upMult = 2; return go("upgrade"); }
+  const closeModals = () => document.querySelectorAll(".modal").forEach(m => m.classList.remove("show"));
+  if (d.close !== undefined) { closeModals(); return renderCurrent(); }
+  if (d.sellOne) { closeModals(); return sell([+d.sellOne]); }
+  if (d.toUpgrade) { closeModals(); upSel = new Set([+d.toUpgrade]); upTarget = null; upMult = 2; return go("upgrade"); }
   if (spinning) return;
   if (d.up) {
     const id = +d.up;
@@ -715,7 +758,11 @@ document.addEventListener("click", async e => {
   }
   if (d.target) { upTarget = d.target; upMult = null; haptic("light"); return renderUpgrade(); }
   if (d.mult) { if (!upSel.size) return toast("Сначала выбери свои подарки"); upMult = +d.mult; haptic("light"); return renderUpgrade(); }
-  if (d.inv) { const id = +d.inv; invSel.has(id) ? invSel.delete(id) : invSel.add(id); haptic("light"); return renderInv(); }
+  if (d.inv) {
+    const id = +d.inv;
+    if (!selectMode) return openDetail(id);
+    invSel.has(id) ? invSel.delete(id) : invSel.add(id); haptic("light"); return renderInv();
+  }
   if (d.shop) {
     if (!online || !tg?.openInvoice) return toast("Покупки доступны, когда игра открыта в Telegram");
     try {
@@ -727,6 +774,9 @@ document.addEventListener("click", async e => {
 });
 $("up-btn").onclick = doUpgrade;
 $("sell-btn").onclick = () => sell([...invSel]);
+let selectMode = false;
+$("sel-mode").onclick = () => { selectMode = !selectMode; invSel.clear(); $("sel-mode").textContent = selectMode ? "Отмена" : "Выбрать"; renderInv(); };
+$("item-modal").onclick = e => { if (e.target.id === "item-modal") $("item-modal").classList.remove("show"); };
 $("sel-all").onclick = () => { invSel = invSel.size === U.items.length ? new Set() : new Set(U.items.map(i => i.id)); renderInv(); };
 $("daily-btn").onclick = async () => {
   const res = await api("daily"); setUser(res);

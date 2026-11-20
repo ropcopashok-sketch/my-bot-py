@@ -43,20 +43,50 @@ GIFTS = {
     "trophy":  ("Кубок чемпиона", "🏆", "legendary", 25000),
 }
 
-# фон подарка: (название, множитель цены, шанс в %)
-BACKGROUNDS = {
-    "plain":   ("Обычный", 1.0, 75),
-    "neon":    ("Неон",    1.3, 18),
-    "gold":    ("Золото",  2.0, 6),
-    "rainbow": ("Радуга",  5.0, 1),
+# ---------------------------------------------------------------- атрибуты подарка
+# Каждый экземпляр = подарок + модель + фон + узор. У каждой части свой шанс (%)
+# и множитель цены. Цена экземпляра = базовая цена × все три множителя.
+
+# модель: (название, множитель, шанс %)
+MODELS = {
+    "classic": ("Классика", 1.0, 70),
+    "neon":    ("Неон",     1.3, 15),
+    "ice":     ("Лёд",      1.6, 8),
+    "shadow":  ("Тень",     2.0, 4.5),
+    "gold":    ("Золото",   3.0, 2),
+    "rainbow": ("Радуга",   5.0, 0.5),
+}
+
+# фон: (название, множитель, шанс %, цвет центра, цвет края, цвет узора)
+BACKDROPS = {
+    "midnight": ("Полночь",  1.0, 30,  "#3b4a8c", "#141a3a", "#8ea2ff"),
+    "sapphire": ("Сапфир",   1.0, 20,  "#2f7fd8", "#0d2a5c", "#9fd0ff"),
+    "emerald":  ("Изумруд",  1.0, 15,  "#2fae7a", "#0b3d2c", "#9cf2c9"),
+    "ruby":     ("Рубин",    1.1, 12,  "#d8475e", "#4a0f1d", "#ffb0bd"),
+    "amethyst": ("Аметист",  1.1, 10,  "#9b5de5", "#2e1452", "#e0c3ff"),
+    "amber":    ("Янтарь",   1.2, 7,   "#e8a33a", "#5a2f05", "#ffe0a3"),
+    "mint":     ("Мята",     1.3, 4,   "#5fe0c8", "#0f4a46", "#d2fff6"),
+    "onyx":     ("Оникс",    1.6, 1.5, "#4a4a52", "#08080a", "#c9c9d6"),
+    "aurora":   ("Аврора",   2.5, 0.5, "#ff6ad5", "#2a0b5c", "#ffffff"),
+}
+
+# узор вокруг подарка: (название, множитель, шанс %)
+PATTERNS = {
+    "stars":    ("Звёзды",     1.0,  30),
+    "hearts":   ("Сердца",     1.0,  25),
+    "sparkles": ("Искры",      1.0,  20),
+    "bolts":    ("Молнии",     1.05, 12),
+    "moons":    ("Луны",       1.1,  8),
+    "diamonds": ("Бриллианты", 1.2,  4),
+    "crowns":   ("Короны",     1.5,  1),
 }
 
 # кейсы: цена (0 = бесплатный по таймеру) и шансы редкостей в %
 CASES = {
     "free":    {"title": "Бесплатный", "price": 0,    "odds": {"common": 80, "uncommon": 17, "rare": 3}},
-    "basic":   {"title": "Базовый",    "price": 150,  "odds": {"common": 60, "uncommon": 30, "rare": 8.5,
+    "basic":   {"title": "Базовый",    "price": 170,  "odds": {"common": 60, "uncommon": 30, "rare": 8.5,
                                                                "epic": 1.4, "legendary": 0.1}},
-    "premium": {"title": "Премиум",    "price": 1200, "odds": {"uncommon": 40, "rare": 40, "epic": 17,
+    "premium": {"title": "Премиум",    "price": 1400, "odds": {"uncommon": 40, "rare": 40, "epic": 17,
                                                                "legendary": 3}},
 }
 FREE_CASE_COOLDOWN = 4 * 3600
@@ -81,32 +111,58 @@ SHOP = {
 
 
 # ---------------------------------------------------------------- помощники
-def item_value(gift: str, bg: str) -> int:
-    return int(round(GIFTS[gift][3] * BACKGROUNDS[bg][1]))
+def _pick(table: dict, pct_index: int, only_base: bool = False) -> str:
+    keys = [k for k, v in table.items() if not only_base or v[1] == 1.0]
+    return rng.choices(keys, weights=[table[k][pct_index] for k in keys])[0]
 
 
-def roll_background() -> str:
-    keys = list(BACKGROUNDS)
-    return rng.choices(keys, weights=[BACKGROUNDS[k][2] for k in keys])[0]
+def base_value(gift: str) -> int:
+    return GIFTS[gift][3]
 
 
-def roll_case(case: str) -> tuple[str, str]:
-    """Возвращает (gift_id, background_id)."""
+def item_value(gift: str, model: str = "classic", bg: str = "midnight", pattern: str = "stars") -> int:
+    m = MODELS.get(model, MODELS["classic"])[1]
+    b = BACKDROPS.get(bg, BACKDROPS["midnight"])[1]
+    p = PATTERNS.get(pattern, PATTERNS["stars"])[1]
+    return int(round(GIFTS[gift][3] * m * b * p))
+
+
+def roll_looks(only_base: bool = False) -> dict:
+    """Случайные модель, фон и узор. only_base — только варианты без наценки (для апгрейда)."""
+    return {
+        "model": "classic" if only_base else _pick(MODELS, 2),
+        "bg": _pick(BACKDROPS, 2, only_base),
+        "pattern": _pick(PATTERNS, 2, only_base),
+    }
+
+
+def roll_case(case: str) -> dict:
+    """Возвращает {gift, model, bg, pattern}."""
     odds = CASES[case]["odds"]
     tier = rng.choices(list(odds), weights=list(odds.values()))[0]
     gift = rng.choice([g for g, v in GIFTS.items() if v[2] == tier])
-    return gift, roll_background()
+    return {"gift": gift, **roll_looks()}
+
+
+def _avg_mult(table: dict) -> float:
+    return sum(v[1] * v[2] for v in table.values()) / sum(v[2] for v in table.values())
 
 
 def case_expected_value(case: str) -> float:
     """Средняя ценность выпадения (для проверки баланса)."""
     odds = CASES[case]["odds"]
-    bg_mult = sum(b[1] * b[2] for b in BACKGROUNDS.values()) / 100
+    looks = _avg_mult(MODELS) * _avg_mult(BACKDROPS) * _avg_mult(PATTERNS)
     total = 0.0
     for tier, pct in odds.items():
         vals = [v[3] for v in GIFTS.values() if v[2] == tier]
         total += pct / 100 * sum(vals) / len(vals)
-    return total * bg_mult
+    return total * looks
+
+
+def is_rare_drop(it: dict) -> bool:
+    """Попадает ли выпадение в общую ленту."""
+    return (GIFTS[it["gift"]][2] in ("epic", "legendary") or MODELS[it["model"]][2] <= 2
+            or BACKDROPS[it["bg"]][2] <= 1.5 or PATTERNS[it["pattern"]][2] <= 1)
 
 
 def upgrade_chance(input_value: int, target_value: int) -> float:
@@ -122,7 +178,7 @@ def do_upgrade(input_value: int, target: str) -> dict:
     """Крутит колесо. roll — куда остановилась стрелка (0..1), выигрыш если roll < chance."""
     if target not in GIFTS:
         return {"error": "Нет такого подарка"}
-    chance = upgrade_chance(input_value, item_value(target, "plain"))
+    chance = upgrade_chance(input_value, base_value(target))
     if chance == 0:
         return {"error": "Цель должна быть дороже, но шанс — не меньше 1%"}
     roll = rng.random()
@@ -143,9 +199,30 @@ def config() -> dict:
     return {
         "tiers": TIERS,
         "gifts": {k: {"name": v[0], "emoji": v[1], "tier": v[2], "value": v[3]} for k, v in GIFTS.items()},
-        "backgrounds": {k: {"name": v[0], "mult": v[1], "pct": v[2]} for k, v in BACKGROUNDS.items()},
+        "models": {k: {"name": v[0], "mult": v[1], "pct": v[2]} for k, v in MODELS.items()},
+        "backdrops": {k: {"name": v[0], "mult": v[1], "pct": v[2], "c1": v[3], "c2": v[4], "pc": v[5]}
+                      for k, v in BACKDROPS.items()},
+        "patterns": {k: {"name": v[0], "mult": v[1], "pct": v[2]} for k, v in PATTERNS.items()},
         "cases": CASES, "free_cooldown": FREE_CASE_COOLDOWN,
         "edge": UPGRADE_EDGE, "max_chance": UPGRADE_MAX_CHANCE, "min_chance": UPGRADE_MIN_CHANCE,
         "max_items": UPGRADE_MAX_ITEMS, "daily": DAILY_REWARDS, "start_coins": START_COINS,
         "ref_inviter": REF_BONUS_INVITER, "ref_invitee": REF_BONUS_INVITEE, "shop": SHOP,
     }
+
+
+# ---------------------------------------------------------------- синхронизация с index.html
+def sync_index(path: str = "index.html") -> None:
+    """Вписывает актуальный config() в офлайн-копию CFG внутри index.html.
+    Запускай `python game.py` после любых изменений баланса."""
+    import json
+    from pathlib import Path
+    p = Path(__file__).with_name(path)
+    html = p.read_text(encoding="utf-8")
+    start, end = "/*CFG-START*/", "/*CFG-END*/"
+    a, b = html.index(start) + len(start), html.index(end)
+    p.write_text(html[:a] + json.dumps(config(), ensure_ascii=False) + html[b:], encoding="utf-8")
+    print(f"{path}: конфиг обновлён")
+
+
+if __name__ == "__main__":
+    sync_index()
