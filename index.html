@@ -48,7 +48,7 @@
   .gift { position:relative; border-radius:16px; padding:10px 6px 8px; text-align:center; overflow:hidden;
           border:1px solid var(--line); border-bottom:3px solid var(--tier); background:var(--card); cursor:pointer; }
   .gift .e { font-size:40px; line-height:1.2; filter:drop-shadow(0 4px 12px rgba(0,0,0,.6)); position:relative; }
-  .gift .art { width:66px; height:66px; display:block; margin:0 auto; position:relative; z-index:1;
+  .gift .art { width:66px; height:66px; display:block; margin:0 auto; position:relative; z-index:1; object-fit:contain;
                filter:drop-shadow(0 6px 10px rgba(0,0,0,.55)); transition:transform .2s; }
   .gift:active .art { transform:scale(.92); }
   .gift.t-epic { box-shadow:inset 0 0 26px rgba(168,85,247,.22); }
@@ -108,7 +108,7 @@
   .case-stage.gone { height:0; overflow:hidden; transition:height .35s; }
   @keyframes caseShake { 0%,100% { transform:rotate(0); } 20% { transform:rotate(-7deg) scale(1.04); } 40% { transform:rotate(6deg); }
                          60% { transform:rotate(-5deg) scale(1.06); } 80% { transform:rotate(4deg); } }
-  svg.mini { width:22px; height:22px; }
+  .mini { width:22px !important; height:22px !important; animation:none !important; }
   .odds { display:flex; gap:3px; margin-top:6px; flex-wrap:wrap; }
   .odds span { font-size:9px; padding:2px 6px; border-radius:6px; background:rgba(255,255,255,.05); border-left:2px solid var(--c); }
 
@@ -221,7 +221,7 @@
 <section class="tab active" id="tab-cases">
   <h3>Кейсы</h3>
   <div id="cases"></div>
-  <p class="small muted center">Каждый подарок получает свой номер #. Фон (Неон, Золото, Радуга) увеличивает цену.</p>
+  <p class="small muted center">Подарки в GIFT LAB — внутриигровые предметы. Каждый получает свой номер #, а редкие модель, фон и узор делают его дороже.</p>
 </section>
 
 <!-- ============ АПГРЕЙД ============ -->
@@ -306,6 +306,7 @@
 </nav>
 <div class="toast" id="toast"></div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie_light.min.js"></script>
 <script src="assets/art.js"></script>
 <script src="assets/fx.js"></script>
 <script>
@@ -321,7 +322,7 @@ const rand = () => crypto.getRandomValues(new Uint32Array(1))[0] / 2 ** 32;
 
 // ---------------------------------------------------------------- конфиг (копия game.py для офлайн-демо)
 // Генерируется из game.py командой `python game.py` — руками не править
-let CFG = /*CFG-START*/{"tiers": {"common": {"title": "Обычный", "color": "#9ca3af"}, "uncommon": {"title": "Необычный", "color": "#22c55e"}, "rare": {"title": "Редкий", "color": "#3b82f6"}, "epic": {"title": "Эпический", "color": "#a855f7"}, "legendary": {"title": "Легендарный", "color": "#f59e0b"}}, "gifts": {"bear": {"name": "Мишка", "emoji": "🧸", "tier": "common", "value": 10}, "rose": {"name": "Роза", "emoji": "🌹", "tier": "common", "value": 15}, "candy": {"name": "Леденец", "emoji": "🍭", "tier": "common", "value": 20}, "balloon": {"name": "Шарик", "emoji": "🎈", "tier": "common", "value": 25}, "clover": {"name": "Клевер", "emoji": "🍀", "tier": "common", "value": 30}, "bouquet": {"name": "Букет", "emoji": "💐", "tier": "uncommon", "value": 60}, "cake": {"name": "Торт", "emoji": "🎂", "tier": "uncommon", "value": 80}, "potion": {"name": "Зелье", "emoji": "🧪", "tier": "uncommon", "value": 100}, "box": {"name": "Сюрприз", "emoji": "🎁", "tier": "uncommon", "value": 120}, "ring": {"name": "Кольцо", "emoji": "💍", "tier": "rare", "value": 250}, "orb": {"name": "Шар судьбы", "emoji": "🔮", "tier": "rare", "value": 350}, "guitar": {"name": "Гитара", "emoji": "🎸", "tier": "rare", "value": 450}, "crown": {"name": "Корона", "emoji": "👑", "tier": "epic", "value": 1000}, "unicorn": {"name": "Единорог", "emoji": "🦄", "tier": "epic", "value": 1600}, "dragon": {"name": "Дракон", "emoji": "🐉", "tier": "epic", "value": 2500}, "rocket": {"name": "Ракета", "emoji": "🚀", "tier": "legendary", "value": 6000}, "galaxy": {"name": "Галактика", "emoji": "🌌", "tier": "legendary", "value": 12000}, "trophy": {"name": "Кубок чемпиона", "emoji": "🏆", "tier": "legendary", "value": 25000}}, "models": {"classic": {"name": "Классика", "mult": 1.0, "pct": 70}, "neon": {"name": "Неон", "mult": 1.3, "pct": 15}, "ice": {"name": "Лёд", "mult": 1.6, "pct": 8}, "shadow": {"name": "Тень", "mult": 2.0, "pct": 4.5}, "gold": {"name": "Золото", "mult": 3.0, "pct": 2}, "rainbow": {"name": "Радуга", "mult": 5.0, "pct": 0.5}}, "backdrops": {"midnight": {"name": "Полночь", "mult": 1.0, "pct": 30, "c1": "#3b4a8c", "c2": "#141a3a", "pc": "#8ea2ff"}, "sapphire": {"name": "Сапфир", "mult": 1.0, "pct": 20, "c1": "#2f7fd8", "c2": "#0d2a5c", "pc": "#9fd0ff"}, "emerald": {"name": "Изумруд", "mult": 1.0, "pct": 15, "c1": "#2fae7a", "c2": "#0b3d2c", "pc": "#9cf2c9"}, "ruby": {"name": "Рубин", "mult": 1.1, "pct": 12, "c1": "#d8475e", "c2": "#4a0f1d", "pc": "#ffb0bd"}, "amethyst": {"name": "Аметист", "mult": 1.1, "pct": 10, "c1": "#9b5de5", "c2": "#2e1452", "pc": "#e0c3ff"}, "amber": {"name": "Янтарь", "mult": 1.2, "pct": 7, "c1": "#e8a33a", "c2": "#5a2f05", "pc": "#ffe0a3"}, "mint": {"name": "Мята", "mult": 1.3, "pct": 4, "c1": "#5fe0c8", "c2": "#0f4a46", "pc": "#d2fff6"}, "onyx": {"name": "Оникс", "mult": 1.6, "pct": 1.5, "c1": "#4a4a52", "c2": "#08080a", "pc": "#c9c9d6"}, "aurora": {"name": "Аврора", "mult": 2.5, "pct": 0.5, "c1": "#ff6ad5", "c2": "#2a0b5c", "pc": "#ffffff"}}, "patterns": {"stars": {"name": "Звёзды", "mult": 1.0, "pct": 30}, "hearts": {"name": "Сердца", "mult": 1.0, "pct": 25}, "sparkles": {"name": "Искры", "mult": 1.0, "pct": 20}, "bolts": {"name": "Молнии", "mult": 1.05, "pct": 12}, "moons": {"name": "Луны", "mult": 1.1, "pct": 8}, "diamonds": {"name": "Бриллианты", "mult": 1.2, "pct": 4}, "crowns": {"name": "Короны", "mult": 1.5, "pct": 1}}, "cases": {"free": {"title": "Бесплатный", "price": 0, "odds": {"common": 80, "uncommon": 17, "rare": 3}}, "basic": {"title": "Базовый", "price": 170, "odds": {"common": 60, "uncommon": 30, "rare": 8.5, "epic": 1.4, "legendary": 0.1}}, "premium": {"title": "Премиум", "price": 1400, "odds": {"uncommon": 40, "rare": 40, "epic": 17, "legendary": 3}}}, "free_cooldown": 14400, "edge": 0.08, "max_chance": 0.75, "min_chance": 0.01, "max_items": 6, "daily": [100, 150, 250, 400, 600, 900, 1500], "start_coins": 300, "ref_inviter": 500, "ref_invitee": 250, "shop": {"pack_s": {"title": "1 000 кристаллов", "coins": 1000, "stars": 15}, "pack_m": {"title": "4 000 кристаллов", "coins": 4000, "stars": 50}, "pack_l": {"title": "15 000 кристаллов", "coins": 15000, "stars": 150}}}/*CFG-END*/;
+let CFG = /*CFG-START*/{"tiers": {"common": {"title": "Обычный", "color": "#9ca3af"}, "uncommon": {"title": "Необычный", "color": "#22c55e"}, "rare": {"title": "Редкий", "color": "#3b82f6"}, "epic": {"title": "Эпический", "color": "#a855f7"}, "legendary": {"title": "Коллекционный", "color": "#f59e0b"}}, "gifts": {"heart": {"name": "Сердце", "emoji": "💝", "tier": "common", "value": 15}, "bear": {"name": "Мишка", "emoji": "🧸", "tier": "common", "value": 15}, "box": {"name": "Подарок", "emoji": "🎁", "tier": "uncommon", "value": 25}, "rose": {"name": "Роза", "emoji": "🌹", "tier": "uncommon", "value": 25}, "cake": {"name": "Торт", "emoji": "🎂", "tier": "rare", "value": 50}, "bouquet": {"name": "Букет", "emoji": "💐", "tier": "rare", "value": 50}, "rocket": {"name": "Ракета", "emoji": "🚀", "tier": "rare", "value": 50}, "champagne": {"name": "Шампанское", "emoji": "🍾", "tier": "rare", "value": 50}, "trophy": {"name": "Кубок", "emoji": "🏆", "tier": "epic", "value": 100}, "ring": {"name": "Кольцо", "emoji": "💍", "tier": "epic", "value": 100}, "diamond": {"name": "Алмаз", "emoji": "💎", "tier": "epic", "value": 100}, "candy": {"name": "Леденец", "emoji": "🍭", "tier": "legendary", "value": 443}, "balloon": {"name": "Шарик", "emoji": "🎈", "tier": "legendary", "value": 443}, "clover": {"name": "Клевер", "emoji": "🍀", "tier": "legendary", "value": 443}, "potion": {"name": "Зелье", "emoji": "🧪", "tier": "legendary", "value": 443}, "orb": {"name": "Шар судьбы", "emoji": "🔮", "tier": "legendary", "value": 520}, "guitar": {"name": "Гитара", "emoji": "🎸", "tier": "legendary", "value": 600}, "crown": {"name": "Корона", "emoji": "👑", "tier": "legendary", "value": 759}, "unicorn": {"name": "Единорог", "emoji": "🦄", "tier": "legendary", "value": 900}, "dragon": {"name": "Дракон", "emoji": "🐉", "tier": "legendary", "value": 1200}, "galaxy": {"name": "Галактика", "emoji": "🌌", "tier": "legendary", "value": 1500}}, "models": {"classic": {"name": "Классика", "mult": 1.0, "pct": 70}, "neon": {"name": "Неон", "mult": 1.3, "pct": 15}, "ice": {"name": "Лёд", "mult": 1.6, "pct": 8}, "shadow": {"name": "Тень", "mult": 2.0, "pct": 4.5}, "gold": {"name": "Золото", "mult": 3.0, "pct": 2}, "rainbow": {"name": "Радуга", "mult": 5.0, "pct": 0.5}}, "backdrops": {"midnight": {"name": "Полночь", "mult": 1.0, "pct": 30, "c1": "#3b4a8c", "c2": "#141a3a", "pc": "#8ea2ff"}, "sapphire": {"name": "Сапфир", "mult": 1.0, "pct": 20, "c1": "#2f7fd8", "c2": "#0d2a5c", "pc": "#9fd0ff"}, "emerald": {"name": "Изумруд", "mult": 1.0, "pct": 15, "c1": "#2fae7a", "c2": "#0b3d2c", "pc": "#9cf2c9"}, "ruby": {"name": "Рубин", "mult": 1.1, "pct": 12, "c1": "#d8475e", "c2": "#4a0f1d", "pc": "#ffb0bd"}, "amethyst": {"name": "Аметист", "mult": 1.1, "pct": 10, "c1": "#9b5de5", "c2": "#2e1452", "pc": "#e0c3ff"}, "amber": {"name": "Янтарь", "mult": 1.2, "pct": 7, "c1": "#e8a33a", "c2": "#5a2f05", "pc": "#ffe0a3"}, "mint": {"name": "Мята", "mult": 1.3, "pct": 4, "c1": "#5fe0c8", "c2": "#0f4a46", "pc": "#d2fff6"}, "onyx": {"name": "Оникс", "mult": 1.6, "pct": 1.5, "c1": "#4a4a52", "c2": "#08080a", "pc": "#c9c9d6"}, "aurora": {"name": "Аврора", "mult": 2.5, "pct": 0.5, "c1": "#ff6ad5", "c2": "#2a0b5c", "pc": "#ffffff"}}, "patterns": {"stars": {"name": "Звёзды", "mult": 1.0, "pct": 30}, "hearts": {"name": "Сердца", "mult": 1.0, "pct": 25}, "sparkles": {"name": "Искры", "mult": 1.0, "pct": 20}, "bolts": {"name": "Молнии", "mult": 1.05, "pct": 12}, "moons": {"name": "Луны", "mult": 1.1, "pct": 8}, "diamonds": {"name": "Бриллианты", "mult": 1.2, "pct": 4}, "crowns": {"name": "Короны", "mult": 1.5, "pct": 1}}, "cases": {"free": {"title": "Бесплатный", "price": 0, "odds": {"common": 85, "uncommon": 15}}, "basic": {"title": "Базовый", "price": 45, "odds": {"common": 50, "uncommon": 34, "rare": 13, "epic": 2.6, "legendary": 0.4}}, "premium": {"title": "Премиум", "price": 250, "odds": {"rare": 45, "epic": 43, "legendary": 12}}}, "free_cooldown": 86400, "edge": 0.08, "max_chance": 0.75, "min_chance": 0.01, "max_items": 6, "daily": [5, 10, 15, 20, 30, 40, 60], "start_coins": 50, "ref_inviter": 25, "ref_invitee": 15, "shop": {"pack_50": {"title": "50 кристаллов", "coins": 50, "stars": 50}, "pack_100": {"title": "100 кристаллов", "coins": 100, "stars": 100}, "pack_250": {"title": "250 кристаллов", "coins": 250, "stars": 250}, "pack_500": {"title": "500 кристаллов", "coins": 500, "stars": 500}, "pack_1000": {"title": "1 000 кристаллов", "coins": 1000, "stars": 1000}}}/*CFG-END*/;
 
 // ---------------------------------------------------------------- общие функции игры
 const baseValue = gift => CFG.gifts[gift].value;
@@ -449,7 +450,7 @@ function giftHTML(it, extra = "", attrs = "") {
   return `<div class="gift t-${g.tier} bd-${it.bg} ${extra}" style="${style}" ${attrs}>
     ${window.ART && it.pattern ? ART.pattern(it.pattern, bd.pc) : ""}
     ${it.serial ? `<div class="s">#${it.serial}</div>` : ""}
-    <div class="m-${model}">${art(it.gift)}</div><div class="n">${g.name}</div>
+    <div class="m-${model}">${art(it.gift, "art", extra.includes("big"))}</div><div class="n">${g.name}</div>
     <div class="v">${fmt(it.value ?? itemValue(it))} 💎</div>${it.chanceHTML || ""}</div>`;
 }
 function attrsHTML(it) {
@@ -478,7 +479,7 @@ function openDetail(id) {
 const targetHTML = (gift, extra = "", attrs = "", chanceHTML = "") =>
   giftHTML({ gift, model: "classic", bg: "midnight", value: baseValue(gift), chanceHTML }, extra, attrs);
 
-const art = (id, cls) => window.ART?.has(id) ? ART.gift(id, cls) : `<div class="e">${CFG.gifts[id]?.emoji || "🎁"}</div>`;
+const art = (id, cls, live) => window.ART?.has(id) ? ART.gift(id, cls, live) : `<div class="e">${CFG.gifts[id]?.emoji || "🎁"}</div>`;
 const sfx = name => window.FX?.sfx[name]?.();
 const levelOf = xp => Math.floor(Math.sqrt((xp || 0) / 25)) + 1;
 const xpFor = lvl => 25 * (lvl - 1) ** 2;
@@ -553,7 +554,7 @@ async function openCase(caseId) {
   const g = CFG.gifts[item.gift], tier = CFG.tiers[g.tier];
   const big = isRareDrop(item);
   $("strip-wrap").classList.add("hidden");
-  $("case-result").innerHTML = `<div class="rays-wrap" style="--ray:${tier.color}55">${big ? `<div class="rays"></div>` : ""}${giftHTML(item)}</div>
+  $("case-result").innerHTML = `<div class="rays-wrap" style="--ray:${tier.color}55">${big ? `<div class="rays"></div>` : ""}${giftHTML(item, "big")}</div>
     <div style="font-weight:900;font-size:20px">${g.name} <span class="muted">#${item.serial}</span></div>
     <div class="tier-label" style="background:${tier.color}22;color:${tier.color};border:1px solid ${tier.color}66">${tier.title}</div>
     ${attrsHTML(item)}
@@ -811,6 +812,8 @@ function hms(s) { const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60),
     botUsername = res.bot_username; uid = res.uid;
   } catch { online = false; res = await api("state"); }
   setUser(res); renderFeed(res.feed); renderCases(); renderHeader();
+  // анимированные стикеры подарков от Telegram (если сервер их получил)
+  if (res.stickers && window.ART) ART.setStickers(res.stickers).then(() => { renderFeed(res.feed); renderCurrent(); });
 })();
 </script>
 </body>

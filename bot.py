@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import asyncio
+import gzip
 import hashlib
 import hmac
 import json
@@ -262,7 +263,7 @@ async def api_state(request: web.Request) -> web.Response:
         row, _ = get_or_create(data["user"]["id"], display_name(data["user"]), data.get("start_param"))
     if "bot_username" not in request.app:
         request.app["bot_username"] = (await request.app["bot"].get_me()).username
-    return ok(row["id"], config=game.config(), uid=row["id"],
+    return ok(row["id"], config=game.config(), uid=row["id"], stickers=request.app["stickers"],
               bot_username=request.app["bot_username"], feed=db.feed())
 
 
@@ -368,6 +369,45 @@ async def api_invoice(request: web.Request) -> web.Response:
     return web.json_response({"ok": True, "link": link})
 
 
+# ------------------------------------------------------------------ стикеры подарков Telegram
+STICKER_DIR = BASE_DIR / "cache" / "stickers"
+
+
+async def load_gift_stickers(app: web.Application) -> None:
+    """Берёт у Telegram анимированные стикеры обычных подарков (getAvailableGifts)
+    и сохраняет их как lottie-JSON. Подбираем по эмодзи и цене в звёздах."""
+    bot: Bot = app["bot"]
+    STICKER_DIR.mkdir(parents=True, exist_ok=True)
+    try:
+        available = (await bot.get_available_gifts()).gifts
+    except Exception as e:
+        log.warning("Не удалось получить подарки Telegram: %s", e)
+        return
+    for gift_id, (name, emoji, _tier, price) in game.GIFTS.items():
+        same_emoji = [g for g in available if g.sticker.emoji and g.sticker.emoji.startswith(emoji[0])]
+        match = next((g for g in same_emoji if g.star_count == price), same_emoji[0] if same_emoji else None)
+        if not match or not match.sticker.is_animated:
+            continue
+        path = STICKER_DIR / f"{gift_id}.json"
+        try:
+            if not path.exists():
+                tgs = STICKER_DIR / f"{gift_id}.tgs"
+                await bot.download(match.sticker.file_id, destination=tgs)
+                path.write_bytes(gzip.decompress(tgs.read_bytes()))   # .tgs = gzip(lottie JSON)
+                tgs.unlink()
+            app["stickers"][gift_id] = f"/stickers/{gift_id}.json"
+        except Exception as e:
+            log.warning("Стикер %s не загружен: %s", gift_id, e)
+    log.info("Стикеры подарков Telegram: %s", ", ".join(app["stickers"]) or "нет")
+
+
+async def sticker(request: web.Request) -> web.FileResponse:
+    name = request.match_info["name"]
+    if name not in game.GIFTS or name not in request.app["stickers"]:
+        raise web.HTTPNotFound()
+    return web.FileResponse(STICKER_DIR / f"{name}.json", headers={"Cache-Control": "public, max-age=86400"})
+
+
 async def index(request: web.Request) -> web.FileResponse:
     return web.FileResponse(BASE_DIR / "index.html")
 
@@ -375,6 +415,8 @@ async def index(request: web.Request) -> web.FileResponse:
 def build_app(bot: Bot) -> web.Application:
     app = web.Application(middlewares=[cors])
     app["bot"] = bot
+    app["stickers"] = {}
+    app.router.add_get("/stickers/{name}.json", sticker)
     app.router.add_get("/", index)
     app.router.add_static("/assets", BASE_DIR / "assets")
     posts = {"state": api_state, "case": api_case, "sell": api_sell, "upgrade": api_upgrade,
@@ -469,7 +511,9 @@ async def main() -> None:
     from aiogram.client.default import DefaultBotProperties
     bot = Bot(BOT_TOKEN, default=DefaultBotProperties(parse_mode="HTML"))
 
-    runner = web.AppRunner(build_app(bot))
+    app = build_app(bot)
+    asyncio.create_task(load_gift_stickers(app))   # в фоне, чтобы не задерживать запуск
+    runner = web.AppRunner(app)
     await runner.setup()
     await web.TCPSite(runner, HOST, PORT).start()
     log.info("Игра доступна на http://%s:%s", HOST, PORT)

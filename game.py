@@ -17,30 +17,36 @@ TIERS = {
     "uncommon":  {"title": "Необычный",   "color": "#22c55e"},
     "rare":      {"title": "Редкий",      "color": "#3b82f6"},
     "epic":      {"title": "Эпический",   "color": "#a855f7"},
-    "legendary": {"title": "Легендарный", "color": "#f59e0b"},
+    "legendary": {"title": "Коллекционный", "color": "#f59e0b"},
 }
 
 # ---------------------------------------------------------------- подарки
+# Цены как у подарков в Telegram: 1 ⭐ = 1 💎.
 # id: (название, эмодзи, редкость, базовая цена в кристаллах)
 GIFTS = {
-    "bear":    ("Мишка",          "🧸", "common",    10),
-    "rose":    ("Роза",           "🌹", "common",    15),
-    "candy":   ("Леденец",        "🍭", "common",    20),
-    "balloon": ("Шарик",          "🎈", "common",    25),
-    "clover":  ("Клевер",         "🍀", "common",    30),
-    "bouquet": ("Букет",          "💐", "uncommon",  60),
-    "cake":    ("Торт",           "🎂", "uncommon",  80),
-    "potion":  ("Зелье",          "🧪", "uncommon", 100),
-    "box":     ("Сюрприз",        "🎁", "uncommon", 120),
-    "ring":    ("Кольцо",         "💍", "rare",     250),
-    "orb":     ("Шар судьбы",     "🔮", "rare",     350),
-    "guitar":  ("Гитара",         "🎸", "rare",     450),
-    "crown":   ("Корона",         "👑", "epic",    1000),
-    "unicorn": ("Единорог",       "🦄", "epic",    1600),
-    "dragon":  ("Дракон",         "🐉", "epic",    2500),
-    "rocket":  ("Ракета",         "🚀", "legendary", 6000),
-    "galaxy":  ("Галактика",      "🌌", "legendary", 12000),
-    "trophy":  ("Кубок чемпиона", "🏆", "legendary", 25000),
+    # обычные подарки — тот же набор и те же цены, что в Telegram (рисунки свои)
+    "heart":     ("Сердце",      "💝", "common",     15),
+    "bear":      ("Мишка",       "🧸", "common",     15),
+    "box":       ("Подарок",     "🎁", "uncommon",   25),
+    "rose":      ("Роза",        "🌹", "uncommon",   25),
+    "cake":      ("Торт",        "🎂", "rare",       50),
+    "bouquet":   ("Букет",       "💐", "rare",       50),
+    "rocket":    ("Ракета",      "🚀", "rare",       50),
+    "champagne": ("Шампанское",  "🍾", "rare",       50),
+    "trophy":    ("Кубок",       "🏆", "epic",      100),
+    "ring":      ("Кольцо",      "💍", "epic",      100),
+    "diamond":   ("Алмаз",       "💎", "epic",      100),
+    # коллекционные — свои, как «маркет»-подарки в Telegram (от 443)
+    "candy":     ("Леденец",     "🍭", "legendary", 443),
+    "balloon":   ("Шарик",       "🎈", "legendary", 443),
+    "clover":    ("Клевер",      "🍀", "legendary", 443),
+    "potion":    ("Зелье",       "🧪", "legendary", 443),
+    "orb":       ("Шар судьбы",  "🔮", "legendary", 520),
+    "guitar":    ("Гитара",      "🎸", "legendary", 600),
+    "crown":     ("Корона",      "👑", "legendary", 759),
+    "unicorn":   ("Единорог",    "🦄", "legendary", 900),
+    "dragon":    ("Дракон",      "🐉", "legendary", 1200),
+    "galaxy":    ("Галактика",   "🌌", "legendary", 1500),
 }
 
 # ---------------------------------------------------------------- атрибуты подарка
@@ -83,13 +89,12 @@ PATTERNS = {
 
 # кейсы: цена (0 = бесплатный по таймеру) и шансы редкостей в %
 CASES = {
-    "free":    {"title": "Бесплатный", "price": 0,    "odds": {"common": 80, "uncommon": 17, "rare": 3}},
-    "basic":   {"title": "Базовый",    "price": 170,  "odds": {"common": 60, "uncommon": 30, "rare": 8.5,
-                                                               "epic": 1.4, "legendary": 0.1}},
-    "premium": {"title": "Премиум",    "price": 1400, "odds": {"uncommon": 40, "rare": 40, "epic": 17,
-                                                               "legendary": 3}},
+    "free":    {"title": "Бесплатный", "price": 0,   "odds": {"common": 85, "uncommon": 15}},
+    "basic":   {"title": "Базовый",    "price": 45,  "odds": {"common": 50, "uncommon": 34, "rare": 13,
+                                                              "epic": 2.6, "legendary": 0.4}},
+    "premium": {"title": "Премиум",    "price": 250, "odds": {"rare": 45, "epic": 43, "legendary": 12}},
 }
-FREE_CASE_COOLDOWN = 4 * 3600
+FREE_CASE_COOLDOWN = 24 * 3600
 
 # апгрейд
 UPGRADE_EDGE = 0.08        # 8% «налог» игры — иначе кристаллы бесконечно множатся
@@ -97,16 +102,18 @@ UPGRADE_MAX_CHANCE = 0.75
 UPGRADE_MIN_CHANCE = 0.01
 UPGRADE_MAX_ITEMS = 6
 
-START_COINS = 300
-DAILY_REWARDS = [100, 150, 250, 400, 600, 900, 1500]
-REF_BONUS_INVITER = 500
-REF_BONUS_INVITEE = 250
+START_COINS = 50
+DAILY_REWARDS = [5, 10, 15, 20, 30, 40, 60]
+REF_BONUS_INVITER = 25
+REF_BONUS_INVITEE = 15
 
 # покупка кристаллов за Telegram Stars (вывода денег нет — это не казино)
-SHOP = {
-    "pack_s": {"title": "1 000 кристаллов",  "coins": 1_000,  "stars": 15},
-    "pack_m": {"title": "4 000 кристаллов",  "coins": 4_000,  "stars": 50},
-    "pack_l": {"title": "15 000 кристаллов", "coins": 15_000, "stars": 150},
+SHOP = {  # 1 ⭐ = 1 💎
+    "pack_50":   {"title": "50 кристаллов",    "coins": 50,    "stars": 50},
+    "pack_100":  {"title": "100 кристаллов",   "coins": 100,   "stars": 100},
+    "pack_250":  {"title": "250 кристаллов",   "coins": 250,   "stars": 250},
+    "pack_500":  {"title": "500 кристаллов",   "coins": 500,   "stars": 500},
+    "pack_1000": {"title": "1 000 кристаллов", "coins": 1_000, "stars": 1_000},
 }
 
 
